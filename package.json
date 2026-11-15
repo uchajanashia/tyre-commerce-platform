@@ -1,0 +1,31 @@
+{
+  "name": "@tyre/root",
+  "version": "0.0.0",
+  "private": true,
+  "packageManager": "npm@11.6.2",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "build:contracts": "npm run build --workspace @tyre/admin-api-client && npm run build --workspace @tyre/shared",
+    "build": "npm run build:contracts && npm run build --workspace @tyre/api && npm run build --workspace @tyre/website && npm run build --workspace @tyre/adminka",
+    "build:demo": "npm run build:contracts && npm run build:demo --workspace @tyre/website && npm run build:demo --workspace @tyre/adminka && node tools/stage-demos.mjs",
+    "test:api": "npm test --workspace @tyre/api",
+    "test:contracts": "npm test --workspace @tyre/admin-api-client",
+    "start:api": "npm run start:dev --workspace @tyre/api",
+    "start:storefront": "npm start --workspace @tyre/website",
+    "start:admin": "npm start --workspace @tyre/adminka",
+    "test": "npm run test:contracts && npm run test:api"
+  },
+  "overrides": {
+    "multer": "2.5.0",
+    "@prisma/config": {
+      "deepmerge-ts": "8.0.0"
+    }
+  },
+  "engines": {
+    "node": ">=24 <25",
+    "npm": ">=11"
+  }
+}

@@ -1,0 +1,228 @@
+<aside class="sidebar" [attr.aria-label]="t('nav.primary')">
+  <a routerLink="/" class="brand brand--desktop" aria-label="tyre.ge — მთავარი გვერდი">
+    <img src="/brand/tyre-ge-logo.png" width="328" height="95" alt="tyre.ge" fetchpriority="high" />
+    <span class="visually-hidden" aria-hidden="true">tyre.ge</span>
+  </a>
+
+  <nav class="sidebar__nav" [attr.aria-label]="t('nav.primary')">
+    @for (item of navigation; track item.path) {
+      <a
+        class="nav-link"
+        [routerLink]="item.path"
+        [class.is-active]="isNavigationActive(item)"
+        [attr.aria-current]="isNavigationActive(item) ? 'page' : null"
+      >
+        <span class="nav-link__label">{{ t(item.labelKey) }}</span>
+      </a>
+    }
+  </nav>
+
+  <section class="catalog-shortcuts" aria-labelledby="desktop-catalog-title">
+    <h2 id="desktop-catalog-title">{{ t('catalog.categories') }}</h2>
+    <div class="catalog-shortcuts__list">
+      @for (item of catalogLinks; track item.key) {
+        <a
+          routerLink="/catalog"
+          [queryParams]="{ class: item.key }"
+          [class.is-active]="isCatalogCategoryActive(item.key)"
+          [attr.aria-current]="isCatalogCategoryActive(item.key) ? 'page' : null"
+        >
+          <app-catalog-class-icon [name]="item.key" />
+          <span>{{ t(item.labelKey) }}</span>
+        </a>
+      }
+    </div>
+  </section>
+
+  <div class="sidebar__footer">
+    <div class="language-switch" role="group" [attr.aria-label]="t('language.label')">
+      <button
+        type="button"
+        [class.is-active]="language.language() === 'ka'"
+        [attr.aria-pressed]="language.language() === 'ka'"
+        [attr.aria-label]="t('language.georgian')"
+        (click)="language.setLanguage('ka')"
+      >
+        GE
+      </button>
+      <button
+        type="button"
+        [class.is-active]="language.language() === 'en'"
+        [attr.aria-pressed]="language.language() === 'en'"
+        [attr.aria-label]="t('language.english')"
+        (click)="language.setLanguage('en')"
+      >
+        EN
+      </button>
+    </div>
+    <a routerLink="/garage">{{ t('garage.choose') }}</a>
+    <p>{{ t('shell.georgianCatalog') }}</p>
+  </div>
+</aside>
+
+<header #headerBar class="mobile-header">
+  <a routerLink="/" class="brand brand--mobile" aria-label="tyre.ge — მთავარი გვერდი">
+    <img src="/brand/tyre-ge-logo.png" width="328" height="95" alt="tyre.ge" />
+    <span class="visually-hidden" aria-hidden="true">tyre.ge</span>
+  </a>
+  @if (homeMode()) {
+    <nav class="home-nav" [attr.aria-label]="t('nav.primary')">
+      <a routerLink="/catalog">{{ t('nav.catalog') }}</a>
+      <a routerLink="/" fragment="season">{{ language.language() === 'ka' ? 'სეზონები' : 'Seasons' }}</a>
+      <a routerLink="/" fragment="brands">{{ language.language() === 'ka' ? 'ბრენდები' : 'Brands' }}</a>
+      <a routerLink="/about">{{ t('nav.about') }}</a>
+    </nav>
+  }
+  <div class="mobile-header__actions">
+    @if (homeMode()) {
+      <a class="home-garage" routerLink="/garage">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="m4 14 1.5-5h13L20 14M4 14h16v5h-3v-2H7v2H4v-5ZM7 9l1-3h8l1 3M7 14h1m8 0h1" />
+        </svg>
+        <span>{{ language.language() === 'ka' ? 'ჩემი ავტო' : 'My car' }}</span>
+      </a>
+      <div class="home-language" role="group" [attr.aria-label]="t('language.label')">
+        <button type="button" [class.is-active]="language.language() === 'ka'"
+          [attr.aria-pressed]="language.language() === 'ka'" [attr.aria-label]="t('language.georgian')"
+          (click)="language.setLanguage('ka')">GE</button>
+        <span aria-hidden="true">/</span>
+        <button type="button" [class.is-active]="language.language() === 'en'"
+          [attr.aria-pressed]="language.language() === 'en'" [attr.aria-label]="t('language.english')"
+          (click)="language.setLanguage('en')">EN</button>
+      </div>
+    }
+    <a
+      routerLink="/cart"
+      class="cart-button cart-button--mobile"
+      [attr.aria-label]="t('cart.title')"
+    >
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M3 4h2l2.1 10.2a2 2 0 0 0 2 1.6h7.8a2 2 0 0 0 2-1.7L20 7H6" />
+        <circle cx="10" cy="19" r="1.2" />
+        <circle cx="17" cy="19" r="1.2" />
+      </svg>
+      <span class="cart-button__count">{{ cart.itemCount() }}</span>
+    </a>
+    <button
+      #menuTrigger
+      type="button"
+      class="menu-trigger"
+      [class.is-open]="drawerOpen()"
+      [attr.aria-expanded]="drawerOpen()"
+      aria-controls="mobile-navigation"
+      [attr.aria-label]="drawerOpen() ? t('nav.close') : t('nav.open')"
+      (click)="toggleDrawer()"
+    >
+      <span></span><span></span>
+    </button>
+  </div>
+</header>
+
+<a routerLink="/cart" class="cart-button cart-button--desktop" [attr.aria-label]="t('cart.title')">
+  <svg viewBox="0 0 24 24" aria-hidden="true">
+    <path d="M3 4h2l2.1 10.2a2 2 0 0 0 2 1.6h7.8a2 2 0 0 0 2-1.7L20 7H6" />
+    <circle cx="10" cy="19" r="1.2" />
+    <circle cx="17" cy="19" r="1.2" />
+  </svg>
+  <span>{{ t('cart.title') }}</span>
+  <span class="cart-button__count">{{ cart.itemCount() }}</span>
+</a>
+
+@if (drawerOpen()) {
+  <div class="drawer-layer" animate.enter="drawer-layer-enter" animate.leave="drawer-layer-leave">
+    <section
+      #drawer
+      id="mobile-navigation"
+      class="drawer"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="mobile-navigation-title"
+      tabindex="-1"
+      (keydown)="onDrawerKeydown($event)"
+    >
+      <div class="drawer__top">
+        <div>
+          <span class="drawer__eyebrow">{{ t('nav.eyebrow') }}</span>
+          <h2 id="mobile-navigation-title">{{ t('nav.choose') }}</h2>
+        </div>
+        <button
+          #drawerClose
+          type="button"
+          class="drawer__close"
+          [attr.aria-label]="t('nav.close')"
+          (click)="closeDrawer()"
+        >
+          <span aria-hidden="true"></span>
+        </button>
+      </div>
+
+      <nav class="drawer__nav" [attr.aria-label]="t('nav.mobile')">
+        @for (item of navigation; track item.path) {
+          <a
+            [routerLink]="item.path"
+            [class.is-active]="isNavigationActive(item)"
+            [attr.aria-current]="isNavigationActive(item) ? 'page' : null"
+            (click)="closeDrawer(false)"
+          >
+            <strong>{{ t(item.labelKey) }}</strong>
+            <span aria-hidden="true">→</span>
+          </a>
+        }
+        @if (homeMode()) {
+          <a routerLink="/" fragment="season" (click)="closeDrawer(false)">
+            <strong>{{ language.language() === 'ka' ? 'სეზონები' : 'Seasons' }}</strong>
+            <span aria-hidden="true">→</span>
+          </a>
+          <a routerLink="/" fragment="brands" (click)="closeDrawer(false)">
+            <strong>{{ language.language() === 'ka' ? 'ბრენდები' : 'Brands' }}</strong>
+            <span aria-hidden="true">→</span>
+          </a>
+        }
+      </nav>
+
+      <section class="drawer__catalog" aria-labelledby="mobile-catalog-title">
+        <h3 id="mobile-catalog-title">{{ t('catalog.fullCategories') }}</h3>
+        <div class="drawer__catalog-grid">
+          @for (item of catalogLinks; track item.key) {
+            <a
+              routerLink="/catalog"
+              [queryParams]="{ class: item.key }"
+              [class.is-active]="isCatalogCategoryActive(item.key)"
+              [attr.aria-current]="isCatalogCategoryActive(item.key) ? 'page' : null"
+              (click)="closeDrawer(false)"
+            >
+              <app-catalog-class-icon [name]="item.key" />
+              <span>
+                <strong>{{ t(item.labelKey) }}</strong>
+                <small>{{ t(item.noteKey) }}</small>
+              </span>
+            </a>
+          }
+        </div>
+      </section>
+
+      <div class="drawer__footer">
+        <div class="language-switch" role="group" [attr.aria-label]="t('language.label')">
+          <button
+            type="button"
+            [class.is-active]="language.language() === 'ka'"
+            [attr.aria-pressed]="language.language() === 'ka'"
+            (click)="language.setLanguage('ka')"
+          >
+            GE
+          </button>
+          <button
+            type="button"
+            [class.is-active]="language.language() === 'en'"
+            [attr.aria-pressed]="language.language() === 'en'"
+            (click)="language.setLanguage('en')"
+          >
+            EN
+          </button>
+        </div>
+        <a routerLink="/garage" (click)="closeDrawer(false)">{{ t('garage.choose') }}</a>
+        <a routerLink="/cart" (click)="closeDrawer(false)">{{ t('cart.view') }}</a>
+      </div>
+    </section>
+  </div>
+}

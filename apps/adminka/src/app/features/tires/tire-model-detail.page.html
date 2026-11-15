@@ -1,0 +1,425 @@
+<nav class="breadcrumbs" aria-label="ადგილმდებარეობა">
+  <a routerLink="/tires">საბურავები</a><span aria-hidden="true">/</span
+  ><span>{{ model()?.name || 'მოდელი' }}</span>
+</nav>
+@if (model(); as m) {
+  <header class="page-heading">
+    <div>
+      <p class="brand">{{ m.brand.name }}</p>
+      <h1>{{ m.name }}</h1>
+      <p class="muted">{{ m.products.length }} ზომა · {{ m.photos.length }} ფოტო</p>
+    </div>
+    <button class="secondary" (click)="startRename()" [disabled]="busy()">სახელის შეცვლა</button>
+  </header>
+  @if (renaming()) {
+    <form class="rename" (ngSubmit)="saveRename()">
+      <label
+        >მოდელის სახელი<input name="renameName" [(ngModel)]="renameName" maxlength="80" required
+      /></label>
+      <button [disabled]="busy() || !renameName.trim()">შენახვა</button
+      ><button type="button" class="secondary" (click)="renaming.set(false)">გაუქმება</button>
+    </form>
+  }
+  @if (notice(); as n) {
+    <p class="notice" [class.error]="n.kind === 'error'" role="status">{{ n.text }}</p>
+  }
+  @if (loadError()) {
+    <p class="notice error" role="alert">
+      განახლება ვერ მოხერხდა. <button class="secondary" (click)="reload()">ხელახლა ცდა</button>
+    </p>
+  }
+  <div class="workspace" [attr.aria-busy]="busy()">
+    <section class="gallery" aria-labelledby="photos-title">
+      <div class="section-heading">
+        <h2 id="photos-title">ფოტოები</h2>
+        <span class="muted">{{ m.photos.length }} / 6</span>
+      </div>
+      @if (photo(); as ph) {
+        <div class="photo-stage">
+          @if (failedPhotos().has(ph.id)) {
+            <div class="image-error" role="status">
+              <span aria-hidden="true">▧</span><strong>ფოტო ვერ ჩაიტვირთა</strong
+              ><button class="secondary" (click)="failedPhotos.set(newPhotoErrors())">
+                ხელახლა ცდა
+              </button>
+            </div>
+          } @else {
+            <button class="enlarge" (click)="preview.showModal()" aria-label="ფოტოს გადიდება">
+              <img
+                [src]="ph.url"
+                [alt]="m.brand.name + ' ' + m.name + ' — ფოტო ' + (photoIndex() + 1)"
+                (error)="photoFailed(ph.id)"
+              /><span class="zoom-hint">გადიდება ↗</span>
+            </button>
+          }
+          <span class="photo-label">{{
+            photoIndex() === 0 ? 'მთავარი ფოტო' : 'ფოტო ' + (photoIndex() + 1)
+          }}</span>
+        </div>
+        <div class="thumbnails" aria-label="ფოტოს არჩევა">
+          @for (item of m.photos; track item.id; let i = $index) {
+            <button
+              class="thumbnail"
+              [class.selected]="item.id === ph.id"
+              [attr.aria-pressed]="item.id === ph.id"
+              [attr.aria-label]="'ფოტო ' + (i + 1) + (i === 0 ? ' — მთავარი' : '')"
+              (click)="selectPhoto(item.id)"
+            >
+              @if (failedPhotos().has(item.id)) {
+                <span>▧ {{ i + 1 }}</span>
+              } @else {
+                <img [src]="item.url" alt="" (error)="photoFailed(item.id)" />
+              }
+            </button>
+          }
+        </div>
+        <div class="photo-tools">
+          <button class="secondary" (click)="makeMain()" [disabled]="busy() || photoIndex() === 0">
+            მთავრად დაყენება
+          </button>
+          <button
+            class="secondary square"
+            aria-label="ფოტოს წინ გადატანა"
+            (click)="movePhoto(m, photoIndex(), -1)"
+            [disabled]="busy() || photoIndex() === 0"
+          >
+            ←
+          </button>
+          <button
+            class="secondary square"
+            aria-label="ფოტოს უკან გადატანა"
+            (click)="movePhoto(m, photoIndex(), 1)"
+            [disabled]="busy() || photoIndex() === m.photos.length - 1"
+          >
+            →
+          </button>
+          <button class="text-danger" (click)="confirmingPhotoId.set(ph.id)" [disabled]="busy()">
+            წაშლა
+          </button>
+        </div>
+        @if (confirmingPhotoId() === ph.id) {
+          <div class="confirmation" role="alert">
+            <p>წაიშალოს ფოტო {{ photoIndex() + 1 }}?</p>
+            <button class="danger" (click)="confirmDeletePhoto(ph)" [disabled]="busy()">
+              წაშლა</button
+            ><button class="secondary" (click)="confirmingPhotoId.set(null)" [disabled]="busy()">
+              გაუქმება
+            </button>
+          </div>
+        }
+      } @else {
+        <div class="photo-stage empty">
+          <span aria-hidden="true">▧</span>
+          <p>დაამატეთ მოდელის ფოტო</p>
+        </div>
+      }
+      <input
+        #fileInput
+        class="sr-only"
+        tabindex="-1"
+        type="file"
+        accept="image/png,image/jpeg,image/webp"
+        multiple
+        (change)="onFilesPicked($event)"
+        [disabled]="busy() || m.photos.length >= 6"
+        aria-label="ფოტოების არჩევა"
+      />
+      <button
+        class="upload secondary"
+        (click)="fileInput.click()"
+        [disabled]="busy() || m.photos.length >= 6"
+      >
+        ＋ ფოტოების დამატება
+      </button>
+      <p class="file-hint">JPG, PNG, WebP · თითოეული 5 MB-მდე</p>
+    </section>
+    <section class="sizes" aria-labelledby="sizes-title">
+      <div class="section-heading">
+        <h2 id="sizes-title">
+          ზომები და ფასები <span>{{ m.products.length }}</span>
+        </h2>
+        <button (click)="openAdd()" [disabled]="busy()">＋ ზომის დამატება</button>
+      </div>
+      @if (m.products.length > 4) {
+        <div class="filters">
+          <label class="search"
+            ><span class="sr-only">ზომის ან SKU-ს ძებნა</span
+            ><input type="search" [(ngModel)]="query" placeholder="ზომა ან SKU" /></label
+          ><label
+            ><span class="sr-only">სორტირება</span
+            ><select [(ngModel)]="sort">
+              <option value="size">ზომით</option>
+              <option value="price">ფასით ↑</option>
+            </select></label
+          >
+        </div>
+      }
+      <div class="product-list">
+        <div class="list-heading" aria-hidden="true">
+          <span>ზომა / SKU</span><span>საცალო</span><span>საბითუმო</span><span>ნაშთი</span
+          ><span></span>
+        </div>
+        @for (p of visibleProducts(); track p.id) {
+          <article class="product-row" [attr.aria-label]="p.size + ', SKU ' + p.code">
+            <div class="product-identity">
+              <h3>{{ p.size }}</h3>
+              <span class="sku">SKU {{ p.code }}</span>
+              <p>
+                {{ seasonLabel(p.seasonGroup) }}
+                @if (p.loadSpeedIndex) {
+                  · {{ p.loadSpeedIndex }}
+                }
+              </p>
+            </div>
+            <div class="price">
+              <span class="mobile-label">საცალო</span
+              ><strong>{{ money(p.retailPrice) }} <small>₾</small></strong>
+            </div>
+            <div class="price wholesale">
+              <span class="mobile-label">საბითუმო</span
+              ><strong>{{ money(p.wholesalePrice) }} <small>₾</small></strong>
+            </div>
+            <div class="stock">
+              <span class="stock-label" [class.unknown]="p.stockQty === null">{{
+                p.stockQty === null ? 'დასაზუსტებელია' : p.stockQty + ' ცალი'
+              }}</span
+              ><span class="muted">{{ stockLabel(p.stockStatus) }}</span>
+            </div>
+            <button
+              class="secondary edit-button"
+              (click)="startEdit(p)"
+              [disabled]="busy()"
+              [attr.aria-label]="p.size + ' — რედაქტირება'"
+            >
+              რედაქტირება
+            </button>
+          </article>
+        } @empty {
+          <div class="empty">
+            <p>{{ query ? 'ზომა ვერ მოიძებნა' : 'ზომები ჯერ არ არის' }}</p>
+            @if (query) {
+              <button class="secondary" (click)="query = ''">ძიების გასუფთავება</button>
+            }
+          </div>
+        }
+      </div>
+      <div class="inventory-link">
+        <p>რაოდენობის შეცვლა საწყობიდან</p>
+        <a routerLink="/inventory">საწყობის გახსნა ↗</a>
+      </div>
+    </section>
+  </div>
+  <dialog
+    #preview
+    class="preview"
+    aria-labelledby="preview-title"
+    (keydown.arrowleft)="stepPhoto(-1); $event.preventDefault()"
+    (keydown.arrowright)="stepPhoto(1); $event.preventDefault()"
+  >
+    <div class="dialog-heading">
+      <h2 id="preview-title">{{ m.brand.name }} · {{ m.name }}</h2>
+      <button
+        class="secondary square"
+        (click)="preview.close()"
+        aria-label="ფოტოს დახურვა"
+        autofocus
+      >
+        ✕
+      </button>
+    </div>
+    @if (photo(); as ph) {
+      <img [src]="ph.url" [alt]="m.name + ' ფოტო ' + (photoIndex() + 1)" />
+    }
+    <div class="preview-nav">
+      <button
+        class="secondary"
+        (click)="stepPhoto(-1)"
+        [disabled]="m.photos.length < 2"
+        aria-label="წინა ფოტო"
+      >
+        ←</button
+      ><span>{{ photoIndex() + 1 }} / {{ m.photos.length }}</span
+      ><button
+        class="secondary"
+        (click)="stepPhoto(1)"
+        [disabled]="m.photos.length < 2"
+        aria-label="შემდეგი ფოტო"
+      >
+        →
+      </button>
+    </div>
+  </dialog>
+  <dialog
+    #editor
+    class="editor"
+    aria-labelledby="editor-title"
+    (cancel)="busy() ? $event.preventDefault() : undefined"
+  >
+    <form #sizeForm="ngForm" (ngSubmit)="sizeForm.valid && saveSize()">
+      <div class="dialog-heading">
+        <div>
+          <p class="brand">{{ m.brand.name }} · {{ m.name }}</p>
+          <h2 id="editor-title">{{ editingId() ? 'ზომის რედაქტირება' : 'ახალი ზომა' }}</h2>
+        </div>
+        <button
+          type="button"
+          class="secondary square"
+          (click)="closeEditor()"
+          [disabled]="busy()"
+          aria-label="ფორმის დახურვა"
+        >
+          ✕
+        </button>
+      </div>
+      <div class="editor-body">
+        @if (notice(); as n) {
+          @if (n.kind === 'error') {
+            <p class="notice error" role="alert">{{ n.text }}</p>
+          }
+        }
+        <fieldset [disabled]="busy()">
+          <legend>ზომა და მახასიათებლები</legend>
+          <div class="fields">
+            <label class="wide"
+              >SKU<input
+                name="code"
+                [(ngModel)]="form.code"
+                maxlength="20"
+                [readonly]="!!editingId()"
+                required
+            /></label>
+            <label
+              >სიგანე<input
+                type="number"
+                name="width"
+                [(ngModel)]="form.width"
+                min="1"
+                step="any"
+                required
+            /></label>
+            <label
+              >პროფილი<input
+                type="number"
+                name="profile"
+                [(ngModel)]="form.profile"
+                min="1"
+                step="1"
+                placeholder="—"
+            /></label>
+            <label
+              >დიამეტრი<input
+                type="number"
+                name="rim"
+                [(ngModel)]="form.rimDiameter"
+                min="1"
+                step="any"
+                required
+            /></label>
+            <label
+              >სეზონი<select name="season" [(ngModel)]="form.seasonGroup">
+                <option value="">მითითებული არ არის</option>
+                <option value="summer">ზაფხული</option>
+                <option value="all_season">ყველა სეზონი</option>
+                <option value="winter">ზამთარი</option>
+              </select></label
+            >
+            <label
+              >ინდექსი<input
+                name="index"
+                [(ngModel)]="form.loadSpeedIndex"
+                maxlength="20"
+                placeholder="მაგ. 91H"
+            /></label>
+            <label
+              >კონსტრუქცია<select name="construction" [(ngModel)]="form.construction">
+                <option value="radial">რადიალური</option>
+                <option value="bias">დიაგონალური</option>
+              </select></label
+            >
+            <label
+              >კლასი<select name="class" [(ngModel)]="form.vehicleClass">
+                <option value="passenger">მსუბუქი</option>
+                <option value="truck">სატვირთო</option>
+              </select></label
+            >
+            <label class="checkbox"
+              ><input type="checkbox" name="commercial" [(ngModel)]="form.commercial" /> კომერციული
+              (C)</label
+            >
+          </div>
+        </fieldset>
+        <fieldset [disabled]="busy()">
+          <legend>ფასები</legend>
+          <div class="fields prices">
+            <label
+              >საცალო ₾<input
+                type="number"
+                name="retail"
+                [(ngModel)]="form.retailPrice"
+                min="0"
+                step="1"
+                required
+            /></label>
+            <label
+              >საბითუმო ₾<input
+                type="number"
+                name="wholesale"
+                [(ngModel)]="form.wholesalePrice"
+                min="0"
+                step="1"
+                required
+            /></label>
+            <label
+              >კატალოგის სტატუსი<select name="stock" [(ngModel)]="form.stockStatus">
+                <option value="in_stock">მარაგშია</option>
+                <option value="limited">ლიმიტირებული</option>
+                <option value="out_of_stock">ამოიწურა</option>
+              </select></label
+            >
+          </div>
+        </fieldset>
+        @if (editingId()) {
+          <details class="delete-section">
+            <summary>ზომის წაშლა</summary>
+            <p>შეკვეთებში გამოყენებული ზომა ვერ წაიშლება.</p>
+            @if (confirmingId() === editingId()) {
+              <p>ნამდვილად წაიშალოს SKU {{ form.code }}?</p>
+              <button type="button" class="danger" (click)="deleteEdited()" [disabled]="busy()">
+                დიახ, წაშლა</button
+              ><button type="button" class="secondary" (click)="confirmingId.set(null)">
+                გაუქმება
+              </button>
+            } @else {
+              <button
+                type="button"
+                class="text-danger"
+                (click)="confirmingId.set(editingId())"
+                [disabled]="busy()"
+              >
+                წაშლა
+              </button>
+            }
+          </details>
+        }
+      </div>
+      <footer class="dialog-footer">
+        <button type="button" class="secondary" (click)="closeEditor()" [disabled]="busy()">
+          გაუქმება</button
+        ><button type="submit" [disabled]="busy() || !formValid(form) || sizeForm.invalid">
+          {{ busy() ? 'ინახება…' : 'შენახვა' }}
+        </button>
+      </footer>
+    </form>
+  </dialog>
+} @else if (loadError()) {
+  <div class="empty" role="alert">
+    <h1>მოდელი ვერ ჩაიტვირთა</h1>
+    <button (click)="reload()">ხელახლა ცდა</button>
+  </div>
+} @else {
+  <div class="loading" role="status">
+    იტვირთება…
+    <div></div>
+    <div></div>
+  </div>
+}

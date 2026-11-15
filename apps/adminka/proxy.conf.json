@@ -1,0 +1,37 @@
+{
+  "/admin/v1": {
+    "target": "http://localhost:3000",
+    "secure": false,
+    "changeOrigin": false
+  },
+  "/admin/auth": {
+    "target": "http://localhost:3000",
+    "secure": false,
+    "changeOrigin": false
+  },
+  "/admin/brands": {
+    "target": "http://localhost:3000",
+    "secure": false,
+    "changeOrigin": false
+  },
+  "/admin/tire-models": {
+    "target": "http://localhost:3000",
+    "secure": false,
+    "changeOrigin": false
+  },
+  "/admin/products": {
+    "target": "http://localhost:3000",
+    "secure": false,
+    "changeOrigin": false
+  },
+  "/admin/photos": {
+    "target": "http://localhost:3000",
+    "secure": false,
+    "changeOrigin": false
+  },
+  "/admin/me": {
+    "target": "http://localhost:3000",
+    "secure": false,
+    "changeOrigin": false
+  }
+}

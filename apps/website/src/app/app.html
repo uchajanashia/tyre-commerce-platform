@@ -1,0 +1,18 @@
+<a class="skip-link" href="#main-content" i18n>მთავარ შიგთავსზე გადასვლა</a>
+@if (!testHomeActive()) {
+  @if (!homeActive()) {
+    <app-climate-backdrop />
+  }
+  <app-header [homeMode]="homeActive()" />
+}
+<main class="app-main" [class.app-main--test-home]="testHomeActive()" [class.app-main--home]="homeActive()" id="main-content" tabindex="-1">
+  <router-outlet />
+</main>
+@if (!testHomeActive()) {
+  <app-footer [homeMode]="homeActive()" [class.home-footer]="homeActive()" />
+}
+<div
+  class="route-overlay"
+  [class.is-active]="routeTransitionActive()"
+  aria-hidden="true"
+></div>

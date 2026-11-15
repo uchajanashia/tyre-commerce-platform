@@ -1,0 +1,28 @@
+{
+  "name": "@tyre/admin-api-client",
+  "version": "0.0.0",
+  "private": true,
+  "type": "commonjs",
+  "main": "./dist/index.js",
+  "types": "./src/index.ts",
+  "files": [
+    "dist/**/*.js",
+    "!dist/**/*.spec.js",
+    "runtime/api-problem-registry.generated.json"
+  ],
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "require": "./dist/index.js",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "npm run build && node --test dist/runtime.spec.js"
+  },
+  "devDependencies": {
+    "typescript": "~5.9.2"
+  }
+}

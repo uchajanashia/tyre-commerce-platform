@@ -1,0 +1,228 @@
+<section class="workflow" [attr.aria-busy]="loading() || busy()">
+  <button
+    class="workflow-back"
+    (click)="order() ? loadOrder(order()!.id) : load()"
+    [disabled]="busy() || loading()"
+  >
+    მდგომარეობის განახლება
+  </button>
+  @if (loading()) {
+    <p class="description" role="status">იტვირთება…</p>
+  }
+  @if (order(); as o) {
+    @if (view === 'customers') {
+      <button class="workflow-back" (click)="back()" [disabled]="busy() || loading()">
+        ← ყველა შეკვეთა
+      </button>
+    }
+    <div class="workflow-heading">
+      <h3>{{ view === 'customers' ? orderTitle(o.id) : 'შესრულება' }}</h3>
+      <span class="status">{{ label(o.fulfillmentStatus) }}</span>
+    </div>
+    @if (o.expiresAt) {
+      <p class="description">ჯავშანი მოქმედებს {{ o.expiresAt | date: 'HH:mm' : '+0400' }}-მდე</p>
+    }
+    @for (item of o.items; track item.id) {
+      <div class="workflow-item">
+        <strong>{{ item.name }}</strong
+        ><small>{{ item.code }}</small>
+        <div class="workflow-counts">
+          <span
+            >შეკვეთილი <b>{{ item.quantity }}</b></span
+          ><span
+            >გაცემული <b>{{ item.issued }}</b></span
+          ><span
+            >დაბრუნებული <b>{{ item.returned }}</b></span
+          >
+        </div>
+      </div>
+    }
+    @if (!mode()) {
+      <div class="workflow-actions">
+        @if (auth.hasPermission('orders.fulfill')) {
+          @if (canIssue()) {
+            <button class="primary" [disabled]="busy() || loading()" (click)="choose('issue')">
+              საქონლის გაცემა
+            </button>
+          }
+          @if (canAllocate()) {
+            <button class="primary" [disabled]="busy() || loading()" (click)="allocate()">
+              მარაგის დაჯავშნა
+            </button>
+          }
+          @if (canReturn()) {
+            <button [disabled]="busy() || loading()" (click)="choose('return')">
+              საქონლის დაბრუნება
+            </button>
+          }
+        }
+        @if (canRefund()) {
+          <button [disabled]="busy() || loading()" (click)="choose('refund')">
+            თანხის დაბრუნება
+          </button>
+        }
+      </div>
+    }
+    @if (o.refundedMinor || o.refunds.length) {
+      <div class="workflow-heading">
+        <h3>თანხის დაბრუნება</h3>
+        <strong>{{ o.refundedMinor / 100 | number: '1.2-2' }} ₾</strong>
+      </div>
+      @for (refund of o.refunds; track refund.id) {
+        <div class="workflow-event">
+          <div>
+            <strong
+              >{{ refund.amountMinor / 100 | number: '1.2-2' }} ₾ ·
+              {{ label(refund.state) }}</strong
+            ><small>{{ refund.reason }}</small>
+          </div>
+          <time>{{ refund.createdAt | date: 'dd.MM HH:mm' : '+0400' }}</time>
+        </div>
+      }
+    }
+  }
+  @if (mode(); as action) {
+    <form #actionForm class="workflow-form" (ngSubmit)="submit()">
+      <h3>
+        {{
+          action === 'issue'
+            ? 'გასაცემი რაოდენობა'
+            : action === 'return'
+              ? 'საწყობში დაბრუნება'
+              : action === 'refund'
+                ? 'დასაბრუნებელი თანხა'
+                : 'ფაქტობრივი ნაშთი'
+        }}
+      </h3>
+      @if (action === 'issue' || action === 'return') {
+        @for (item of order()?.items ?? []; track item.id) {
+          <label class="workflow-quantity"
+            ><span>{{ item.name }}</span
+            ><input
+              type="number"
+              min="0"
+              step="1"
+              [max]="action === 'issue' ? item.quantity - item.issued : item.issued - item.returned"
+              [name]="item.id"
+              [(ngModel)]="quantities[item.id]"
+              [disabled]="busy() || loading()"
+          /></label>
+        }
+      } @else if (action === 'refund') {
+        <p class="description">
+          ხელმისაწვდომია {{ (order()?.refundableMinor ?? 0) / 100 | number: '1.2-2' }} ₾
+        </p>
+        <label class="field"
+          >თანხა, ₾<input
+            name="amount"
+            inputmode="decimal"
+            [(ngModel)]="amount"
+            [disabled]="busy() || loading()"
+            required
+        /></label>
+      } @else {
+        <label class="field"
+          >რაოდენობა<input
+            name="count"
+            type="number"
+            min="0"
+            step="1"
+            [(ngModel)]="count"
+            [disabled]="busy() || loading()"
+            required
+        /></label>
+      }
+      @if (action === 'refund' || action === 'count') {
+        <label class="field"
+          >მიზეზი<textarea
+            name="reason"
+            [(ngModel)]="reason"
+            minlength="3"
+            maxlength="500"
+            [disabled]="busy() || loading()"
+            required
+          ></textarea>
+        </label>
+      }
+      <div class="workflow-actions">
+        <button type="submit" class="primary" [disabled]="busy() || loading()">
+          {{
+            busy() ? 'მუშავდება…' : action === 'refund' ? 'დაბრუნების მოთხოვნა' : 'დადასტურება'
+          }}</button
+        ><button type="button" (click)="mode.set(null)" [disabled]="busy() || loading()">
+          გაუქმება
+        </button>
+      </div>
+    </form>
+  }
+  @if (view === 'customers' && !order()) {
+    <div class="workflow-heading"><h3>შეკვეთების ისტორია</h3></div>
+    @for (item of history()?.items ?? []; track item.id) {
+      <button class="workflow-history" (click)="loadOrder(item.id)">
+        <span
+          ><strong>{{ item.title }}</strong
+          ><small>{{ label(item.status) }} · {{ label(item.subtitle) }}</small></span
+        ><b>{{ item.amount | number: '1.0-2' }} ₾ ↗</b>
+      </button>
+    } @empty {
+      @if (!loading() && !error()) {
+        <p class="description">
+          {{
+            auth.hasPermission('orders.read')
+              ? 'შეკვეთები არ არის.'
+              : 'შეკვეთების ისტორიაზე წვდომა არ გაქვთ.'
+          }}
+        </p>
+      }
+    }
+    @if ((history()?.total ?? 0) > 25) {
+      <div class="workflow-paging">
+        <button (click)="movePage(-1)" [disabled]="page === 1">წინა</button><span>{{ page }}</span
+        ><button (click)="movePage(1)" [disabled]="page * 25 >= (history()?.total ?? 0)">
+          შემდეგი
+        </button>
+      </div>
+    }
+  }
+  @if (view === 'inventory') {
+    @if (auth.hasPermission('inventory.write') && !mode()) {
+      <button class="primary save" (click)="choose('count')" [disabled]="loading() || busy()">
+        ნაშთის აღრიცხვა
+      </button>
+    }
+    <div class="workflow-heading">
+      <h3>მარაგის მოძრაობა</h3>
+      <small>{{ config.warehouse }}</small>
+    </div>
+    @for (entry of movements(); track entry.id) {
+      <div class="workflow-event">
+        <div>
+          <strong>{{ label(entry.kind) }}</strong
+          ><small>ნაშთი {{ entry.onHandAfter }} · ჯავშანი {{ entry.reservedAfter }}</small>
+        </div>
+        <time>{{ entry.createdAt | date: 'dd.MM HH:mm' : '+0400' }}</time>
+      </div>
+    } @empty {
+      @if (!loading() && !error()) {
+        <p class="description">მოძრაობა არ არის.</p>
+      }
+    }
+    @if (page > 1 || movements().length === 25) {
+      <div class="workflow-paging">
+        <button (click)="movePage(-1)" [disabled]="page === 1">წინა</button><span>{{ page }}</span
+        ><button (click)="movePage(1)" [disabled]="movements().length < 25">შემდეგი</button>
+      </div>
+    }
+  }
+  @if (error()) {
+    <p role="alert" class="error-text">{{ error() }}</p>
+    <button
+      class="workflow-back"
+      (click)="order() ? loadOrder(order()!.id) : load()"
+      [disabled]="busy() || loading()"
+    >
+      განახლება
+    </button>
+  }
+  <p role="status" class="success-text">{{ notice() }}</p>
+</section>

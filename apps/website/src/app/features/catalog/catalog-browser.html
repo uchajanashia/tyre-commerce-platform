@@ -1,0 +1,454 @@
+<div class="browser">
+  <div class="browser__filters" [attr.aria-label]="copy('ფილტრები', 'Filters')">
+    <div
+      class="browser__classes"
+      role="radiogroup"
+      [attr.aria-label]="copy('პროდუქტის კლასი', 'Product class')"
+    >
+      @for (option of classOptions; track option.key) {
+        <button
+          type="button"
+          role="radio"
+          class="browser__class"
+          [class.is-active]="catalogClass() === option.key"
+          [attr.aria-checked]="catalogClass() === option.key"
+          (click)="selectCatalogClass(option.key)"
+        >
+          <span class="browser__class-icon" aria-hidden="true">
+            @switch (option.key) {
+              @case ('passenger') {
+                <svg viewBox="0 0 24 24">
+                  <path
+                    d="M3 15.5v-3l2-1 2.1-4h9.8l2.1 4 2 1v3M6 15.5h12M7 18a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Zm10 0a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3ZM7.1 11.5h9.8"
+                  />
+                </svg>
+              }
+              @case ('truck') {
+                <svg viewBox="0 0 24 24">
+                  <path
+                    d="M3 7h11v9H3V7Zm11 3h4l3 3v3h-7v-6ZM6.5 19a2 2 0 1 0 0-4 2 2 0 0 0 0 4Zm11.5 0a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z"
+                  />
+                </svg>
+              }
+              @case ('special') {
+                <svg viewBox="0 0 24 24">
+                  <path
+                    d="M5 14h11l2 2H8l-3-2Zm2-1V8h6l2 5M9 8V5h4l2 3M5.5 20a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm12 0a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z"
+                  />
+                </svg>
+              }
+              @case ('disk') {
+                <svg viewBox="0 0 24 24">
+                  <circle cx="12" cy="12" r="8" />
+                  <circle cx="12" cy="12" r="2.2" />
+                  <path d="m12 4 1.5 5.8L20 12l-6.5 2.2L12 20l-1.5-5.8L4 12l6.5-2.2L12 4Z" />
+                </svg>
+              }
+            }
+          </span>
+          <span class="browser__class-copy">
+            <span class="browser__class-name">{{ classLabel(option.key) }}</span>
+            <span class="browser__class-note">{{ classNote(option.key) }}</span>
+          </span>
+        </button>
+      }
+    </div>
+
+    @if (catalogClass() !== 'disk') {
+      <div class="browser__section" data-filter-group="season">
+        <span class="browser__caption">{{ copy('სეზონი', 'Season') }}</span>
+        <div
+          class="browser__controls browser__controls--seasons"
+          role="radiogroup"
+          [attr.aria-label]="copy('საბურავის სეზონი', 'Tyre season')"
+        >
+          @for (c of seasonCategories; track c.key) {
+            <button
+              type="button"
+              role="radio"
+              class="browser__chip"
+              [class.is-active]="isSeasonActive(c.seasonKey)"
+              [attr.aria-checked]="isSeasonActive(c.seasonKey)"
+              [attr.title]="seasonSubtitle(c.seasonKey)"
+              [style.--cat]="c.categoryColor"
+              (click)="toggleSeason(c.seasonKey)"
+            >
+              <app-season-symbol [symbol]="c.symbol" aria-hidden="true" />
+              <span class="browser__chip-label">{{ seasonChoiceLabel(c.seasonKey) }}</span>
+            </button>
+          }
+        </div>
+      </div>
+    }
+
+    @if (hasMetricSizes() && hasInchSizes()) {
+      <div class="browser__size-mode">
+        <span class="browser__caption">{{ copy('ზომის ფორმატი', 'Size format') }}</span>
+        <div
+          class="browser__mode-switch"
+          role="radiogroup"
+          [attr.aria-label]="copy('ზომის ფორმატი', 'Size format')"
+        >
+          <button
+            type="button"
+            role="radio"
+            [class.is-active]="activeSizeMode() === 'metric'"
+            [attr.aria-checked]="activeSizeMode() === 'metric'"
+            (click)="selectSizeMode('metric')"
+          >
+            {{ copy('მეტრული', 'Metric') }}
+          </button>
+          <button
+            type="button"
+            role="radio"
+            [class.is-active]="activeSizeMode() === 'inch'"
+            [attr.aria-checked]="activeSizeMode() === 'inch'"
+            (click)="selectSizeMode('inch')"
+          >
+            {{ copy('ინჩური', 'Inch') }}
+          </button>
+        </div>
+      </div>
+    }
+
+    <!-- Metric sizes use width/profile/rim fields. Inch numeric, flotation
+             and industrial sizes stay intact and are chosen by sidewall label. -->
+    <div class="browser__fields">
+      @if (activeSizeMode() === 'inch') {
+        <div class="browser__field browser__field--inch browser__field--native">
+          <label>
+            <span class="browser__caption">{{ copy('ინჩური ზომა', 'Inch size') }}</span>
+            <select
+              class="browser__select browser__select--native"
+              [class.is-active]="!!exactSizeParam()"
+              (change)="onExactSizeSelect($event)"
+            >
+              <option value="" [selected]="!exactSizeParam()">
+                {{ copy('ყველა ინჩური ზომა', 'All inch sizes') }}
+              </option>
+              @for (size of sizes().inchSizes; track size) {
+                <option [value]="size" [selected]="exactSizeParam() === size">
+                  {{ size }}
+                </option>
+              }
+            </select>
+          </label>
+        </div>
+      } @else {
+        <div class="browser__field">
+          <app-radial-filter-select
+            [label]="copy('დისკის დიამეტრი', 'Rim diameter')"
+            data-filter-key="rim"
+            [options]="rimRadialOptions()"
+            [value]="sizeParam()"
+            (valueChange)="onRadialParamSelect('rim', $event)"
+          />
+        </div>
+
+        <div class="browser__field">
+          <app-radial-filter-select
+            [label]="copy('სიგანე', 'Width')"
+            data-filter-key="width"
+            [options]="widthRadialOptions()"
+            [value]="widthParam()"
+            (valueChange)="onRadialParamSelect('width', $event)"
+          />
+        </div>
+
+        @if (catalogClass() !== 'disk') {
+          <div class="browser__field">
+            <app-radial-filter-select
+              [label]="copy('პროფილი', 'Profile')"
+              data-filter-key="profile"
+              [options]="profileRadialOptions()"
+              [value]="profileParam()"
+              (valueChange)="onRadialParamSelect('profile', $event)"
+            />
+          </div>
+        }
+      }
+    </div>
+
+    <button
+      type="button"
+      class="browser__advanced-toggle"
+      [attr.aria-expanded]="advancedOpen()"
+      aria-controls="catalog-advanced-filters"
+      (click)="toggleAdvanced()"
+    >
+      <span>{{ copy('დამატებითი პარამეტრები', 'Additional parameters') }}</span>
+      <svg viewBox="0 0 24 24" aria-hidden="true" [class.is-open]="advancedOpen()">
+        <path d="m7 10 5 5 5-5" />
+      </svg>
+    </button>
+
+    @if (advancedOpen()) {
+      <div id="catalog-advanced-filters" class="browser__advanced">
+        @if (catalogClass() !== 'disk') {
+          <div class="browser__section" data-filter-group="type">
+            <span class="browser__caption">{{ copy('საბურავის ტიპი', 'Tyre type') }}</span>
+            <div
+              class="browser__controls browser__controls--types"
+              role="radiogroup"
+              [attr.aria-label]="copy('საბურავის ტიპი', 'Tyre type')"
+            >
+              @for (c of typeCategories; track c.key) {
+                <button
+                  type="button"
+                  role="radio"
+                  class="browser__chip"
+                  [class.is-active]="isCategoryActive(c.key)"
+                  [attr.aria-checked]="isCategoryActive(c.key)"
+                  [attr.title]="typeSubtitle(c.key)"
+                  [style.--cat]="c.categoryColor"
+                  (click)="toggleCategory(c.key)"
+                >
+                  <app-season-symbol [symbol]="c.symbol" aria-hidden="true" />
+                  <span class="browser__chip-label">{{ typeLabel(c.key) }}</span>
+                </button>
+              }
+            </div>
+          </div>
+        }
+
+        <div class="browser__field browser__field--brand browser__field--native">
+          <label>
+            <span class="browser__caption">{{ copy('ბრენდი', 'Brand') }}</span>
+            <select
+              class="browser__select browser__select--native"
+              [class.is-active]="!!brandParam()"
+              (change)="onParamSelect('brand', $event)"
+            >
+              <option value="" [selected]="!brandParam()">
+                {{ copy('ყველა ბრენდი', 'All brands') }}
+              </option>
+              @for (b of brands(); track b.id) {
+                <option [value]="b.id" [selected]="brandParam() === b.id">{{ b.name }}</option>
+              }
+            </select>
+          </label>
+        </div>
+      </div>
+    }
+  </div>
+
+  @if (activeFilterChips().length) {
+    <div
+      class="browser__active-filters"
+      [attr.aria-label]="copy('არჩეული ფილტრები', 'Selected filters')"
+    >
+      <span class="browser__active-label">{{ copy('არჩეული:', 'Selected:') }}</span>
+      @for (chip of activeFilterChips(); track chip.key) {
+        <button type="button" (click)="clearFilterChip(chip.key)">
+          <span>{{ chip.label }}</span
+          ><span aria-hidden="true">×</span>
+        </button>
+      }
+      <button type="button" class="browser__clear-all" (click)="resetFilters()">
+        {{ copy('ყველას გასუფთავება', 'Clear all') }}
+      </button>
+    </div>
+  }
+
+  <div class="browser__toolbar">
+    <p class="browser__count" aria-live="polite">
+      @if (loading()) {
+        <span>{{ copy('შედეგები იტვირთება…', 'Loading results…') }}</span>
+      } @else {
+        <span class="num">{{ total() }}</span> <span>{{ copy('პროდუქტი', 'products') }}</span>
+      }
+    </p>
+    <label class="browser__sort">
+      <span class="browser__sort-cap">{{ copy('დალაგება', 'Sort') }}</span>
+      <select
+        class="browser__select browser__select--sort"
+        [attr.aria-label]="copy('დალაგება', 'Sort')"
+        (change)="onSortChange($event)"
+      >
+        <option value="" [selected]="!sortParam()">
+          {{ copy('ნაგულისხმევი', 'Default') }}
+        </option>
+        <option value="price-asc" [selected]="sortParam() === 'price-asc'">
+          {{ copy('ფასი — ზრდადობით', 'Price — low to high') }}
+        </option>
+        <option value="price-desc" [selected]="sortParam() === 'price-desc'">
+          {{ copy('ფასი — კლებადობით', 'Price — high to low') }}
+        </option>
+      </select>
+    </label>
+  </div>
+
+  <div class="browser__results" #results [attr.aria-busy]="loading()">
+    @if (loading()) {
+      <p class="visually-hidden" role="status">
+        {{ copy('პროდუქტები იტვირთება…', 'Loading products…') }}
+      </p>
+      <div class="browser__grid" aria-hidden="true">
+        @for (s of skeletons; track $index) {
+          <div class="card card--skeleton">
+            <div class="sk sk--media"></div>
+            <div class="sk sk--line"></div>
+            <div class="sk sk--line sk--short"></div>
+          </div>
+        }
+      </div>
+    } @else {
+      <div class="browser__grid">
+        @for (tire of pageItems(); track tire.id; let productIndex = $index) {
+          <a
+            [routerLink]="tire.productType === 'disk' ? null : ['/tire', tire.id]"
+            queryParamsHandling="preserve"
+            class="card"
+            [class.card--unlinked]="tire.productType === 'disk'"
+            [attr.aria-disabled]="tire.productType === 'disk' ? true : null"
+            [attr.tabindex]="tire.productType === 'disk' ? -1 : null"
+            [style.--cat]="categoryOf(tire)?.categoryColor ?? null"
+          >
+            <!-- Category badge — symbol + label always together (never color
+                     alone); sits above the aria-hidden media so AT reads it. -->
+            @if (categoryOf(tire); as cat) {
+              <span class="card__cat">
+                <app-season-symbol [symbol]="cat.symbol" />
+                <span class="card__cat-label">{{ typeLabel(cat.key) }}</span>
+              </span>
+            }
+            <div class="card__media" [class.is-error]="!tire.media.catalogUrl">
+              <span
+                class="card__media-fallback"
+                [attr.aria-hidden]="tire.media.catalogUrl ? true : null"
+              >
+                <svg viewBox="0 0 48 48" aria-hidden="true">
+                  <rect x="7" y="10" width="34" height="28" rx="4" />
+                  <circle cx="18" cy="20" r="4" />
+                  <path d="m10 34 9-8 6 5 5-4 8 7" />
+                </svg>
+                <span>{{
+                  copy('პროდუქტის ფოტო ჯერ არ არის', 'Product photo is not available yet')
+                }}</span>
+              </span>
+              @if (tire.media.catalogUrl) {
+                <img
+                  class="card__catalog"
+                  [src]="tire.media.catalogUrl"
+                  [alt]="brandName(tire.brandId) + ' ' + tire.model"
+                  [attr.loading]="productIndex === 0 ? 'eager' : 'lazy'"
+                  decoding="async"
+                  width="800"
+                  height="800"
+                  (error)="onCatalogImageError($event)"
+                />
+              }
+              <!-- Quick-specs on hover/focus (desktop + keyboard). Touch keeps the
+                       essentials visible in the card body below — never hidden. -->
+              <div class="card__specs" aria-hidden="true">
+                <dl class="card__specs-list">
+                  <div class="card__specs-row">
+                    <dt>{{ copy('ზომა', 'Size') }}</dt>
+                    <dd class="num">{{ tire.size | tireSize }}</dd>
+                  </div>
+                  @if (tire.productType !== 'disk') {
+                    <div class="card__specs-row">
+                      <dt>{{ copy('ტიპი', 'Type') }}</dt>
+                      <dd>{{ productTypeLabel(tire) }}</dd>
+                    </div>
+                  }
+                  @if (tire.loadIndex !== undefined || tire.speedRating) {
+                    <div class="card__specs-row">
+                      <dt>{{ copy('დატვირთვა / სიჩქარე', 'Load / speed') }}</dt>
+                      <dd class="num">
+                        {{ tire.loadIndex | loadIndex }} · {{ tire.speedRating | speedRating }}
+                      </dd>
+                    </div>
+                  }
+                  <div class="card__specs-row">
+                    <dt>{{ copy('ბრენდი', 'Brand') }}</dt>
+                    <dd>{{ brandName(tire.brandId) }}</dd>
+                  </div>
+                </dl>
+              </div>
+            </div>
+            <div class="card__badges">
+              @if (tire.attributes.runFlat) {
+                <span class="badge">RF</span>
+              }
+              @if (tire.attributes.threePMSF) {
+                <span class="badge">3PMSF</span>
+              }
+            </div>
+            <h2 class="card__title">{{ brandName(tire.brandId) }} {{ tire.model }}</h2>
+            <p class="card__size num">{{ tire.size | tireSize }}</p>
+            <p class="card__price">
+              <span class="num">{{ tire.priceGel | currency: 'GEL' : 'symbol' : '1.0-0' }}</span>
+              <span class="card__price-note">{{ copy('ერთი ცალი', 'per tyre') }}</span>
+            </p>
+            <p class="card__availability" [class.is-out]="tire.inStock <= 0">
+              <span aria-hidden="true"></span>
+              @if (tire.inStock > 0) {
+                <span>{{ copy('მარაგშია', 'In stock') }}</span>
+              } @else {
+                <span>{{ copy('არ არის მარაგში', 'Out of stock') }}</span>
+              }
+            </p>
+            @if (tire.loadIndex !== undefined || tire.speedRating) {
+              <p class="card__secondary num">
+                <span>{{ copy('დატვირთვა / სიჩქარე', 'Load / speed') }}</span>
+                {{ tire.loadIndex | loadIndex }} · {{ tire.speedRating | speedRating }}
+              </p>
+            }
+            @if (tire.euLabel; as eu) {
+              <app-eu-label [label]="eu" [compact]="true" />
+            }
+            @if (tire.productType === 'disk') {
+              <span class="card__unlinked-note">{{
+                copy('დეტალური გვერდი მზადდება', 'Detail page is being prepared')
+              }}</span>
+            }
+          </a>
+        } @empty {
+          @if (error()) {
+            <div class="browser__empty browser__empty--error" role="alert">
+              <strong>{{
+                copy('კატალოგის ჩატვირთვა ვერ მოხერხდა.', 'Could not load the catalog.')
+              }}</strong>
+              <p>
+                {{
+                  copy(
+                    'სცადე გვერდის განახლება ან მოგვიანებით დაბრუნდი.',
+                    'Refresh the page or try again later.'
+                  )
+                }}
+              </p>
+            </div>
+          } @else if (hasActiveFilters()) {
+            <div class="browser__empty">
+              <p>{{ filteredEmptyMessage() }}</p>
+              <button type="button" class="browser__reset" (click)="resetFilters()">
+                {{ copy('ფილტრების გასუფთავება', 'Clear filters') }}
+              </button>
+            </div>
+          } @else {
+            <div class="browser__empty">
+              <p>{{ catalogEmptyMessage() }}</p>
+            </div>
+          }
+        }
+      </div>
+    }
+  </div>
+
+  @if (total() > 0) {
+    <div class="browser__pagebar">
+      <p class="browser__range" aria-live="polite">
+        <span class="browser__range-cap">{{ copy('ნაჩვენებია', 'Showing') }}</span>
+        <span class="num">{{ rangeStart() }}–{{ rangeEnd() }} / {{ total() }}</span>
+      </p>
+      @if (totalPages() > 1) {
+        <app-pagination
+          [page]="pageNum()"
+          [totalPages]="totalPages()"
+          (pageChange)="onPageChange($event)"
+        />
+      }
+    </div>
+  }
+</div>

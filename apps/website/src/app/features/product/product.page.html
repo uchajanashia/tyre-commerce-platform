@@ -1,0 +1,299 @@
+<section class="detail">
+  <div class="detail__navigation">
+    <a class="detail__back" routerLink="/catalog">
+      <svg class="detail__back-icon" viewBox="0 0 24 24" width="24" height="24" aria-hidden="true">
+        <path d="M15 18l-6-6 6-6" />
+      </svg>
+      <span>{{ copy('კატალოგში დაბრუნება', 'Back to catalog') }}</span>
+    </a>
+  </div>
+
+  @if (productState().kind === 'loading') {
+    <div class="product product--state" role="status">
+      <h1>{{ copy('პროდუქტი იტვირთება…', 'Loading product…') }}</h1>
+    </div>
+  } @else if (tire(); as t) {
+    <div class="detail__layout">
+      <!-- Keep the established product-page hierarchy: the vehicle scene
+               is the dominant upper-left visual and product photos follow it. -->
+      <div class="detail__hero" [style.--cat]="heroCategory()?.categoryColor ?? null">
+        <app-hero-scene class="detail__stage" [tire]="t" [category]="heroCategory()" />
+      </div>
+
+      <div class="product">
+        <h1>{{ brandName() }} {{ t.model }}</h1>
+        <p class="product__season">
+          <span [class]="'product__season-badge climate-' + (heroCategory()?.theme ?? t.season)">{{
+            productTypeLabel(t)
+          }}</span>
+          <strong class="product__size num">{{ t.size | tireSize }}</strong>
+        </p>
+        <p class="product__price">
+          <span class="num">{{ t.priceGel | currency: 'GEL' : 'symbol' : '1.0-0' }}</span>
+          <span class="product__price-note">{{ unitPriceLabel(t) }}</span>
+        </p>
+
+        <div class="product__buy">
+          <div class="product__quantity-row">
+            <span class="product__quantity-label" id="product-quantity-label">{{
+              copy('რაოდენობა', 'Quantity')
+            }}</span>
+            <div class="product__quantity" role="group" aria-labelledby="product-quantity-label">
+              <button
+                type="button"
+                class="product__quantity-step"
+                [disabled]="selectedQuantity() === 1"
+                (click)="setQuantity(selectedQuantity() - 1)"
+                [attr.aria-label]="copy('რაოდენობის შემცირება', 'Decrease quantity')"
+              >
+                −
+              </button>
+              <output class="product__quantity-value num" aria-live="polite">
+                {{ selectedQuantity() }}
+              </output>
+              <button
+                type="button"
+                class="product__quantity-step"
+                [disabled]="selectedQuantity() === 4"
+                (click)="setQuantity(selectedQuantity() + 1)"
+                [attr.aria-label]="copy('რაოდენობის გაზრდა', 'Increase quantity')"
+              >
+                +
+              </button>
+            </div>
+            <button
+              type="button"
+              class="product__quantity-set"
+              [class.is-active]="selectedQuantity() === 4"
+              (click)="setQuantity(4)"
+            >
+              {{ copy('კომპლექტი · 4 ცალი', 'Set · 4 items') }}
+            </button>
+          </div>
+          <p class="product__selected-total">
+            <span>{{ copy('არჩეული ჯამი', 'Selected total') }}</span>
+            <strong class="num">
+              {{ t.priceGel * selectedQuantity() | currency: 'GEL' : 'symbol' : '1.0-0' }}
+            </strong>
+          </p>
+          <button
+            type="button"
+            class="product__cta"
+            [disabled]="t.inStock <= 0"
+            (click)="addToCart(t)"
+          >
+            @if (t.inStock > 0) {
+              {{ copy('კალათაში დამატება', 'Add to cart') }}
+            } @else {
+              {{ copy('მარაგში არ არის', 'Out of stock') }}
+            }
+          </button>
+          @if (justAdded()) {
+            <span class="visually-hidden" role="status" aria-live="polite">
+              {{ copy('პროდუქტი დაემატა კალათაში.', 'Product added to cart.') }}
+            </span>
+            <a routerLink="/cart" class="product__added">{{
+              copy('✓ დაემატა — კალათის ნახვა →', '✓ Added — view cart →')
+            }}</a>
+          }
+        </div>
+
+        <section
+          class="fitment"
+          [class.fitment--confirmed]="compatibility()?.fits === true"
+          aria-labelledby="fitment-title"
+          aria-live="polite"
+        >
+          @if (isDisk(t)) {
+            <p class="fitment__eyebrow">
+              {{ copy('ავტომობილთან შემოწმება', 'Vehicle check') }}
+            </p>
+            <h2 id="fitment-title">
+              {{
+                copy('დისკის თავსებადობა დასადასტურებელია', 'Wheel compatibility must be verified')
+              }}
+            </h2>
+            <p>
+              {{
+                copy(
+                  'საჭიროა ზომის, ჭანჭიკების განლაგებისა და სხვა პარამეტრების შემოწმება.',
+                  'Size, bolt pattern and other specifications must be checked.'
+                )
+              }}
+            </p>
+            <a class="fitment__action" routerLink="/garage">{{
+              copy('შეამოწმე თავსებადობა ავტომობილთან', 'Check vehicle compatibility')
+            }}</a>
+          } @else if (compatibility()?.fits === true) {
+            <p class="fitment__eyebrow">
+              {{ copy('დადასტურებული fitment შედეგი', 'Verified fitment result') }}
+            </p>
+            <h2 id="fitment-title">
+              {{ copy('ერგება თქვენს მანქანას', 'Fits your vehicle') }}
+            </h2>
+            <p>{{ selectedVehicleLabel() }}</p>
+          } @else {
+            <p class="fitment__eyebrow">{{ copy('თავსებადობა', 'Compatibility') }}</p>
+            <h2 id="fitment-title">
+              @if (compatibility()?.fits === false) {
+                {{
+                  copy(
+                    'ამ ავტომობილთან თავსებადობა არ დადასტურდა',
+                    'Compatibility with this vehicle was not confirmed'
+                  )
+                }}
+              } @else if (fitmentLoading()) {
+                {{ copy('არჩეული ავტომობილი მოწმდება…', 'Checking the selected vehicle…') }}
+              } @else {
+                {{ copy('ავტომობილი ჯერ არ არის შემოწმებული', 'Vehicle has not been checked yet') }}
+              }
+            </h2>
+            @if (selectedVehicleLabel()) {
+              <p>{{ selectedVehicleLabel() }}</p>
+            }
+            <a class="fitment__action" routerLink="/garage">{{
+              copy('შეამოწმე თავსებადობა ავტომობილთან', 'Check vehicle compatibility')
+            }}</a>
+          }
+        </section>
+
+        @if (t.euLabel; as eu) {
+          <app-eu-label [label]="eu" />
+        }
+
+        <table class="product__specs">
+          <tbody>
+            <tr>
+              <th>{{ copy('ზომა', 'Size') }}</th>
+              <td class="num">{{ t.size | tireSize }}</td>
+            </tr>
+            <tr>
+              <th>{{ copy('დატვირთვის ინდექსი', 'Load index') }}</th>
+              <td class="num">{{ t.loadIndex | loadIndex }}</td>
+            </tr>
+            <tr>
+              <th>{{ copy('სიჩქარის ინდექსი', 'Speed rating') }}</th>
+              <td class="num">{{ t.speedRating | speedRating }}</td>
+            </tr>
+            <tr>
+              <th>{{ copy('ტიპი', 'Type') }}</th>
+              <td>{{ productTypeLabel(t) }}</td>
+            </tr>
+            @if (brandCountry(); as country) {
+              <tr>
+                <th>{{ copy('მწარმოებელი ქვეყანა', 'Country of manufacture') }}</th>
+                <td>{{ country }}</td>
+              </tr>
+            }
+            @if (t.attributes.runFlat) {
+              <tr>
+                <th>Run-flat</th>
+                <td>{{ copy('კი', 'Yes') }}</td>
+              </tr>
+            }
+            @if (t.attributes.threePMSF) {
+              <tr>
+                <th>3PMSF</th>
+                <td>{{ copy('კი (მძიმე თოვლი)', 'Yes (severe snow)') }}</td>
+              </tr>
+            }
+            @if (t.attributes.mudSnow) {
+              <tr>
+                <th>M+S</th>
+                <td>{{ copy('კი', 'Yes') }}</td>
+              </tr>
+            }
+            @if (t.attributes.studdable) {
+              <tr>
+                <th>{{ copy('ხრახნის დაშვება', 'Studdable') }}</th>
+                <td>{{ copy('შესაძლებელია', 'Available') }}</td>
+              </tr>
+            }
+            @if (t.attributes.treadDepthMm) {
+              <tr>
+                <th>{{ copy('პროტექტორის სიღრმე', 'Tread depth') }}</th>
+                <td class="num">{{ t.attributes.treadDepthMm }} {{ copy('მმ', 'mm') }}</td>
+              </tr>
+            }
+            <tr>
+              <th>{{ copy('ხელმისაწვდომობა', 'Availability') }}</th>
+              <td [class.product__stock-ok]="t.inStock > 0">
+                @if (t.inStock > 0) {
+                  {{ copy('მარაგშია', 'In stock') }}
+                } @else {
+                  {{ copy('მარაგში არ არის', 'Out of stock') }}
+                }
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    @if (similar().length > 0) {
+      <section class="similar" [attr.aria-label]="similarProductsLabel(t)">
+        <div class="similar__head">
+          <div class="similar__heading">
+            <h2 class="similar__title">{{ similarProductsLabel(t) }}</h2>
+            @if (similarRange(); as range) {
+              <p class="similar__range num">
+                R{{ range.diameter }}
+                @if (range.widthMin !== null && range.aspectMin !== null) {
+                  · {{ range.widthMin }}–{{ range.widthMax }} {{ copy('სიგანე', 'width') }} ·
+                  {{ range.aspectMin }}–{{ range.aspectMax }}
+                  {{ copy('პროფილი', 'profile') }}
+                }
+              </p>
+            }
+          </div>
+          <a class="similar__all" routerLink="/catalog">{{
+            copy('სრული კატალოგი →', 'Full catalog →')
+          }}</a>
+        </div>
+        <ul class="similar__track" role="list">
+          @for (s of similar(); track s.id) {
+            <li class="similar__item">
+              <a class="similar__card" [routerLink]="['/tire', s.id]">
+                <div class="similar__media">
+                  <img
+                    class="similar__face"
+                    [src]="s.media.sidewallUrl"
+                    alt=""
+                    width="104"
+                    height="104"
+                    loading="lazy"
+                    draggable="false"
+                  />
+                </div>
+                <span class="similar__name">{{ similarBrandName(s) }} {{ s.model }}</span>
+                <span class="similar__spec num">{{ s.size | tireSize }}</span>
+                <span [class]="'similar__season climate-' + s.season">
+                  @if (categoryOf(s); as cat) {
+                    <app-season-symbol [symbol]="cat.symbol" />
+                    {{ cat.badgeLabel }}
+                  } @else {
+                    {{ seasonLabel(s.season) }}
+                  }
+                </span>
+                <span class="similar__price num"
+                  >{{ s.priceGel | currency: 'GEL' : 'symbol' : '1.0-0' }} /
+                  {{ copy('ცალი', 'item') }}</span
+                >
+              </a>
+            </li>
+          }
+        </ul>
+      </section>
+    }
+  } @else if (productState().kind === 'error') {
+    <div class="product product--state" role="alert">
+      <h1>{{ copy('კატალოგი დროებით მიუწვდომელია', 'Catalog is temporarily unavailable') }}</h1>
+      <p>{{ copy('გთხოვ, ცოტა ხანში სცადე ხელახლა.', 'Please try again shortly.') }}</p>
+    </div>
+  } @else {
+    <div class="product product--state">
+      <h1>{{ copy('პროდუქტი ვერ მოიძებნა', 'Product not found') }}</h1>
+      <a routerLink="/catalog">← {{ copy('კატალოგში დაბრუნება', 'Back to catalog') }}</a>
+    </div>
+  }
+</section>

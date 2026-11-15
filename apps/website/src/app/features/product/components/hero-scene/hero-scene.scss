@@ -1,0 +1,225 @@
+:host {
+  display: block;
+}
+
+.hero {
+  display: grid;
+  gap: var(--space-3);
+}
+
+/* Secondary panel below the dominant vehicle scene. Every available real
+       product photo remains visible and opens at its own lightbox index. */
+.hero__photo {
+  position: relative;
+  width: 100%;
+  margin-inline: auto;
+  background: var(--surface);
+  border: 1px solid color-mix(in srgb, var(--cat, var(--border)) 55%, var(--border));
+  border-radius: var(--radius-lg);
+  box-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.12),
+    0 0 0 1px color-mix(in srgb, var(--cat, transparent) 12%, transparent);
+  padding: var(--space-3);
+  display: grid;
+  gap: var(--space-3);
+}
+
+.hero__gallery {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+.hero__photo--single .hero__gallery {
+  grid-template-columns: minmax(0, 1fr);
+  width: min(100%, 420px);
+  margin-inline: auto;
+}
+
+.hero__image {
+  display: block;
+  min-width: 0;
+  aspect-ratio: 4 / 3;
+  border-radius: var(--radius-md);
+  /* white bed: studio shots are white/transparent — a dark tire on a dark
+         card would vanish */
+  background: #ffffff;
+  overflow: hidden;
+  cursor: zoom-in;
+  transition:
+    transform var(--dur-fast) var(--ease-out),
+    box-shadow var(--dur-fast) var(--ease-out);
+
+  &:hover,
+  &:focus-visible {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  }
+}
+
+.hero__image img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  padding: clamp(var(--space-2), 3vw, var(--space-5));
+}
+
+.hero__badge {
+  position: absolute;
+  top: calc(var(--space-3) + var(--space-3));
+  right: calc(var(--space-3) + var(--space-3));
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 3px var(--space-3);
+  border: 1px solid color-mix(in srgb, var(--cat, var(--metal)) 55%, transparent);
+  border-radius: var(--radius-full);
+  background: color-mix(in srgb, var(--bg-0) 74%, transparent);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  color: var(--cat, var(--metal));
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  pointer-events: none;
+}
+
+.hero__scene-wrap {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.hero__scene-note {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
+.hero__scene-wrap--disk .scene {
+  background:
+    radial-gradient(
+      500px 360px at 50% 35%,
+      color-mix(in srgb, var(--color-text-muted) 12%, transparent),
+      transparent 72%
+    ),
+    var(--color-surface-muted);
+}
+
+/* Primary vehicle visual. The adjacent caption prevents this illustration
+       from being mistaken for an authoritative fitment result. */
+.hero__scene {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+@media (max-width: 767px) {
+  .hero__photo {
+    padding: var(--space-2);
+  }
+
+  .hero__gallery {
+    gap: var(--space-2);
+  }
+
+  .hero__image {
+    aspect-ratio: 1 / 1;
+  }
+
+  .hero__image--primary:only-child {
+    aspect-ratio: 4 / 3;
+    max-height: 280px;
+  }
+
+  .hero__scene-note {
+    font-size: var(--text-xs);
+  }
+}
+
+/* Light scene + season ambient: one soft corner glow + a low-opacity
+       full-scene wash, both var(--cat), over a white base. Owner feedback:
+       no dark/black background anywhere on any page — this used to be a
+       near-black cinematic panel (#06080d), now white like the rest of the
+       page it sits on. */
+.scene {
+  position: relative;
+  background:
+    radial-gradient(
+      560px 420px at 6% 8%,
+      color-mix(in srgb, var(--cat, #8a93a6) 22%, transparent),
+      transparent 70%
+    ),
+    linear-gradient(
+      color-mix(in srgb, var(--cat, #8a93a6) 5%, transparent),
+      color-mix(in srgb, var(--cat, #8a93a6) 5%, transparent)
+    ),
+    var(--surface);
+}
+
+/* ── layered vehicle scene: shadow → one wheel layer per anchor (product
+       photo OR fallback crop, never both — see class doc) → body (real alpha
+       holes reveal whatever's underneath) → occlusion. All layers share one
+       fixed-aspect-ratio canvas (VEHICLE_SCENE_CANVAS). */
+.scene__layer {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+}
+
+.scene__vehicle {
+  object-fit: contain;
+  animation: vehicle-enter 180ms var(--ease-out) both;
+}
+
+.scene__wheel {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  overflow: hidden;
+}
+
+/* The real, active tire — spinning marks it as the live product photo. */
+.scene__wheel-photo {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  animation: wheel-spin 2.2s linear infinite;
+}
+
+/* The generic stand-in — static, and cropped from the scene's own
+       fallback image at this exact anchor (never the full fallback canvas,
+       which would show behind/around a product photo at a DIFFERENT anchor). */
+.scene__wheel-fallback {
+  width: 100%;
+  height: 100%;
+  background-repeat: no-repeat;
+}
+
+@keyframes wheel-spin {
+  to {
+    transform: rotate(-360deg);
+  }
+}
+
+@keyframes vehicle-enter {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scene__wheel-photo {
+    animation: none;
+  }
+
+  .scene__vehicle {
+    animation: none;
+  }
+}

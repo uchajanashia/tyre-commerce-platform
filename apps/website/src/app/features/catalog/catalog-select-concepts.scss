@@ -1,0 +1,19 @@
+/* URL-selectable studies share the same radial interaction while changing the
+   wheel material: ?selectConcept=sidewall | rim | dial. */
+
+.browser__fields:not([data-select-concept='standard']) {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: clamp(10px, 1.4vw, 18px);
+}
+
+@media (max-width: 1180px) {
+  .browser__fields:not([data-select-concept='standard']) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 860px) {
+  .browser__fields:not([data-select-concept='standard']) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

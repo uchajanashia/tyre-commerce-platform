@@ -1,0 +1,202 @@
+<section class="hero" aria-labelledby="hero-title" tabindex="0" (keydown)="heroKey($event)" (pointerdown)="heroPointerDown($event)" (pointerup)="heroPointerUp($event)">
+  <div class="hero__visual" aria-hidden="true">
+    @for (film of heroFilms; track film.id; let i = $index) {
+      <div class="hero__scene" [class.is-active]="heroIndex() === i">
+        <app-home-film [id]="film.id" [active]="mediaReady() && heroIndex() === i" [playing]="heroPlaying() && heroIndex() === i" [priority]="i === 0" (ended)="heroEnded(i)" (progress)="heroIndex() === i && heroProgress.set($event)" (failed)="heroIndex() === i && heroPaused.set(true)" />
+      </div>
+    }
+  </div>
+  <div class="hero__shade"></div>
+  <div class="hero__content">
+    <p class="hero__eyebrow" data-hero-copy><span></span> TYRE.GE / {{ t('შენი გზისთვის', 'FOR YOUR ROAD') }}</p>
+    <h1 id="hero-title" data-hero-copy>{{ t('შენი გზა.', 'Your road.') }}<br /><span>{{ t('შენი საბურავი.', 'Your tyre.') }}</span></h1>
+    <p class="hero__copy" data-hero-copy>{{ t('ყოველი გზა ახალი დასაწყისია.', 'Every road is a new beginning.') }}</p>
+    <a class="hero__explore" routerLink="/catalog" data-hero-copy>{{ t('აღმოაჩინე კოლექცია', 'Explore the collection') }} <span aria-hidden="true">↗</span></a>
+  </div>
+  <div class="hero__bottom">
+    <div class="hero__caption"><span>0{{ heroIndex() + 1 }}</span><span>{{ t(activeHero().title.ka, activeHero().title.en) }}</span></div>
+    <div class="hero__controls" [attr.aria-label]="t('ვიდეოების მართვა', 'Video controls')">
+      @for (film of heroFilms; track film.id; let i = $index) {
+        <button type="button" class="hero__dot" [class.is-active]="heroIndex() === i" [attr.aria-label]="t('ვიდეო', 'Video') + ' ' + (i + 1)" [attr.aria-current]="heroIndex() === i ? 'true' : null" (click)="chooseHero(i)"><span [style.width.%]="heroIndex() === i ? heroProgress() : 0"></span></button>
+      }
+      <button class="media-toggle" type="button" [attr.aria-label]="heroPlaying() ? t('ვიდეოს შეჩერება', 'Pause video') : t('ვიდეოს ჩართვა', 'Play video')" (click)="toggleHero()">@if (heroPlaying()) { <span class="pause-symbol" aria-hidden="true"></span> } @else { <span aria-hidden="true">▶</span> }</button>
+    </div>
+  </div>
+  <div class="hero__finder">
+    <div class="finder-label"><svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="12"/><circle cx="16" cy="16" r="5"/><path d="m8 7 4 5m8 8 4 5M7 24l5-4m8-8 5-4"/></svg><span>{{ t('იპოვე შენი', 'FIND YOUR') }}<br /><strong>{{ t('საბურავი', 'TYRE') }}</strong></span></div>
+    <a routerLink="/catalog"><span>{{ t('ზომით არჩევა', 'Shop by size') }}</span><i aria-hidden="true">↗</i></a>
+    <a routerLink="/garage"><span>{{ t('ავტომობილით არჩევა', 'Shop by vehicle') }}</span><i aria-hidden="true">↗</i></a>
+  </div>
+</section>
+
+<section class="seasons section-wrap" id="season" aria-labelledby="seasons-title">
+  <header class="section-heading" data-reveal><div><p class="section-kicker">01 / {{ t('კოლექციები', 'COLLECTIONS') }}</p><h2 id="seasons-title">{{ t('ყველა სეზონს', 'Every season.') }}<br /><span>{{ t('თავისი საბურავი აქვს.', 'The right tyre.') }}</span></h2></div><p>{{ t('აირჩიე სეზონი. იპოვე შენი ზომა.', 'Choose the season. Find your size.') }}</p></header>
+  <div class="season-grid">
+    @for (season of seasons; track season.id) {
+      <a class="season-card" [attr.data-season]="season.id" (mouseenter)="hoveredSeason.set(season.id)" (mouseleave)="hoveredSeason.set(null)" (focus)="focusedSeason.set(season.id)" (blur)="focusedSeason.set(null)" data-reveal routerLink="/catalog" [queryParams]="{ season: season.id }" (click)="setSeason(season.id)" [attr.aria-label]="t(season.title.ka, season.title.en) + ' — ' + t('საბურავების ნახვა', 'View tyres')">
+        <app-home-film class="season-card__film" [id]="'season-' + season.id" mobileMedia="(max-width: 640px)" [active]="seasonPlaying(season.id)" [playing]="seasonPlaying(season.id)" [loop]="true" />
+        <span class="season-card__index">{{ season.index }}</span>
+        <div class="season-card__copy"><span>{{ t(season.note.ka, season.note.en) }}</span><h3>{{ t(season.title.ka, season.title.en) }}</h3><div class="season-card__action"><span>{{ t('საბურავების ნახვა', 'View tyres') }}</span><i aria-hidden="true">↗</i></div></div>
+      </a>
+    }
+  </div>
+</section>
+
+<section class="products" aria-labelledby="products-title">
+  <header class="section-heading section-wrap" data-reveal><div><p class="section-kicker">02 / {{ t('ახლო ხედით', 'IN FOCUS') }}</p><h2 id="products-title">{{ t('გაიცანი მოდელები.', 'Meet the models.') }}</h2></div><a routerLink="/catalog" class="text-link">{{ t('სრული კატალოგი', 'Full catalogue') }} <span aria-hidden="true">↗</span></a></header>
+  <div class="product-cinema">
+    <div class="product-cinema__visual" aria-hidden="true">
+      @for (film of productFilms; track film.id; let i = $index) {
+        <div class="product-cinema__scene" [class.is-active]="productIndex() === i"><app-home-film [id]="film.id" [active]="mediaReady() && productIndex() === i" [playing]="productPlaying() && productIndex() === i" [loop]="true" /></div>
+      }
+    </div>
+    <div class="product-cinema__shade"></div>
+    <div class="product-cinema__content">
+      @for (film of productFilms; track film.id; let i = $index) {
+        @if (productIndex() === i) {
+          <div class="product-copy"><p class="product-copy__brand">Road<span>X</span></p><p class="product-copy__family">{{ film.family }}</p><h3>{{ film.model }}</h3><p class="product-copy__description">{{ t(film.description.ka, film.description.en) }}</p><a class="button button--primary" [routerLink]="['/tire', film.productId]">{{ t('მოდელის ნახვა', 'Explore model') }} <span aria-hidden="true">↗</span></a></div>
+        }
+      }
+      <button class="film-open" type="button" (click)="openFilm($event)"><span class="film-open__icon" aria-hidden="true">↗</span>{{ t('ვიდეოს ნახვა', 'Watch the film') }}</button>
+    </div>
+    <div class="product-cinema__bar">
+      <div class="product-tabs" role="group" [attr.aria-label]="t('მოდელის არჩევა', 'Choose a model')">
+        @for (film of productFilms; track film.id; let i = $index) { <button type="button" [class.is-active]="productIndex() === i" [attr.aria-pressed]="productIndex() === i" (click)="chooseProduct(i)"><span>0{{ i + 1 }}</span>{{ film.family }} {{ film.model }}</button> }
+      </div>
+      <button class="media-toggle" type="button" [attr.aria-label]="productPlaying() ? t('პროდუქტის ვიდეოს შეჩერება', 'Pause product video') : t('პროდუქტის ვიდეოს ჩართვა', 'Play product video')" (click)="toggleProduct()">@if (productPlaying()) { <span class="pause-symbol" aria-hidden="true"></span> } @else { <span aria-hidden="true">▶</span> }</button>
+    </div>
+  </div>
+</section>
+
+<section class="brands" id="brands">
+  <div class="brands__heading" data-reveal>
+    <div>
+      <p class="section-kicker">{{ t('ბრენდები', 'Brands') }}</p>
+      <h2>{{ t('სახელები, რომლებსაც გზა ენდობა.', 'Names trusted on the road.') }}</h2>
+    </div>
+    <p>
+      {{
+        t(
+          'საერთაშორისო გამოცდილება, შერჩეული საქართველოს გზებისთვის.',
+          'International experience, selected for Georgian roads.'
+        )
+      }}
+    </p>
+  </div>
+  <app-home-brands [cards]="brandCards()" [collectionLabel]="t('კოლექციის ნახვა', 'View collection')" />
+</section>
+
+<section
+  #carousel
+  id="anatomy"
+  class="showcase"
+  [attr.aria-roledescription]="t('კარუსელი', 'carousel')"
+  [attr.aria-label]="t('საბურავის ანატომია', 'Tyre anatomy')"
+  tabindex="0"
+  (mouseenter)="setPaused(true)"
+  (mouseleave)="setPaused(false)"
+  (focusin)="setPaused(true)"
+  (focusout)="onCarouselFocusOut()"
+  (keydown)="onCarouselKeydown($event)"
+>
+  <div class="showcase__heading" data-reveal>
+    <div>
+      <p class="section-kicker section-kicker--dark">
+        {{ t('საბურავის ანატომია', 'Tyre anatomy') }}
+      </p>
+      <h2>{{ t('ხარისხი შიგნიდან იწყება.', 'Quality starts within.') }}</h2>
+    </div>
+    <p>
+      {{
+        t(
+          'ხუთი ფენა. ერთი გამართული სისტემა. დაათვალიერე საბურავი შიგნიდან.',
+          'Five layers. One integrated system. Explore the tyre from the inside.'
+        )
+      }}
+    </p>
+  </div>
+
+  @if (activeStage(); as active) {
+    <div class="carousel">
+      <div
+        class="carousel__stage"
+        (pointerdown)="onPointerDown($event)"
+        (pointerup)="onPointerUp($event)"
+        (pointercancel)="onPointerCancel()"
+      >
+        @for (stage of anatomyStages; track stage.frame; let i = $index) {
+          <div
+            class="carousel__item"
+            [class.carousel__item--active]="relativePosition(i) === 0"
+            [class.carousel__item--previous]="relativePosition(i) === -1"
+            [class.carousel__item--next]="relativePosition(i) === 1"
+            [class.carousel__item--hidden]="isHidden(i)"
+            aria-hidden="true"
+          >
+            <img [src]="stage.frame" alt="" width="1254" height="1254" draggable="false" />
+          </div>
+        }
+        <button
+          type="button"
+          class="carousel__side-hit carousel__side-hit--previous"
+          [attr.aria-label]="t('წინა ფენა', 'Previous layer')"
+          (click)="previous()"
+        ></button>
+        <button
+          type="button"
+          class="carousel__side-hit carousel__side-hit--next"
+          [attr.aria-label]="t('შემდეგი ფენა', 'Next layer')"
+          (click)="next()"
+        ></button>
+      </div>
+
+      <div class="carousel__content" data-reveal aria-live="polite">
+        <p class="carousel__count">{{ active.num }} <span>/ 05</span></p>
+        <p class="carousel__brand">{{ t(active.detail.ka, active.detail.en) }}</p>
+        <h3>{{ t(active.title.ka, active.title.en) }}</h3>
+        <p class="carousel__description">{{ t(active.text.ka, active.text.en) }}</p>
+        <div class="carousel__progress" aria-hidden="true">
+          <span [style.width.%]="(activeIndex() + 1) * 20"></span>
+        </div>
+        <a routerLink="/catalog" class="carousel__cta"
+          >{{ t('საბურავების შერჩევა', 'Choose tyres') }} <span aria-hidden="true">↗</span></a
+        >
+      </div>
+
+      <div class="carousel__controls">
+        <button
+          type="button"
+          (click)="previous()"
+          [attr.aria-label]="t('წინა ფენა', 'Previous layer')"
+        >
+          ←
+        </button>
+        <div class="carousel__dots" [attr.aria-label]="t('ფენის არჩევა', 'Choose a layer')">
+          @for (stage of anatomyStages; track stage.frame; let i = $index) {
+            <button
+              type="button"
+              [class.is-active]="i === activeIndex()"
+              [attr.aria-label]="i + 1 + ' ' + t('ფენა', 'layer')"
+              [attr.aria-current]="i === activeIndex() ? 'true' : null"
+              (click)="selectStage(i)"
+            ></button>
+          }
+        </div>
+        <button type="button" (click)="next()" [attr.aria-label]="t('შემდეგი ფენა', 'Next layer')">
+          →
+        </button>
+      </div>
+    </div>
+  } @else {
+    <div class="showcase__loading" aria-live="polite">
+      <span></span>{{ t('რჩეული საბურავები იტვირთება…', 'Selected tyres are loading…') }}
+    </div>
+  }
+</section>
+
+
+@if (modalProduct(); as film) {
+  <dialog class="film-dialog" [class.is-closing]="modalClosing()" aria-labelledby="film-title" (cancel)="closeFilm($event)" (click)="backdropClick($event)">
+    <div class="film-dialog__surface"><header><div><span>RoadX / {{ film.family }}</span><h2 id="film-title">{{ film.model }}</h2></div><button class="film-dialog__close" type="button" [attr.aria-label]="t('დახურვა', 'Close')" (click)="closeFilm()">✕</button></header><div class="film-dialog__video"><app-home-film [id]="film.id" [active]="true" [playing]="!modalClosing()" [loop]="true" /></div><a class="film-dialog__link" [routerLink]="['/tire', film.productId]">{{ t('მოდელის ნახვა', 'Explore model') }} <span aria-hidden="true">↗</span></a></div>
+  </dialog>
+}

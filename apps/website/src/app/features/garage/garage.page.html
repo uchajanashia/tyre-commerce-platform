@@ -1,0 +1,341 @@
+<section class="garage">
+  <header class="garage__intro">
+    <p class="garage__current">{{ currentStepSummary() }}</p>
+    <h1>{{ copy('აირჩიე ავტომობილი', 'Choose a vehicle') }}</h1>
+    <p>
+      {{
+        copy(
+          'მარკა, მოდელი და გამოშვების წელი დაგვეხმარება სწორი ზომის მოძებნაში.',
+          'Make, model and production year help us find the right size.'
+        )
+      }}
+    </p>
+  </header>
+
+  @if (step() === 'make' || step() === 'model') {
+    <input
+      class="garage__search"
+      type="search"
+      [value]="query()"
+      (input)="onSearch($event)"
+      [placeholder]="step() === 'make' ? makeSearchPlaceholder() : modelSearchPlaceholder()"
+      [attr.aria-label]="step() === 'make' ? makeSearchPlaceholder() : modelSearchPlaceholder()"
+    />
+  }
+
+  <nav class="garage__stepper" [attr.aria-label]="copy('არჩევის ნაბიჯები', 'Selection steps')">
+    <button
+      type="button"
+      class="garage__step"
+      [class.is-active]="step() === 'make'"
+      [class.is-complete]="isStepComplete('make')"
+      [attr.aria-current]="step() === 'make' ? 'step' : null"
+      (click)="goToStep('make')"
+    >
+      <span class="garage__step-label">1 · {{ copy('მარკა', 'Make') }}</span>
+      <span class="garage__step-value">{{ selectedMake()?.name ?? '—' }}</span>
+    </button>
+    <button
+      type="button"
+      class="garage__step"
+      [class.is-active]="step() === 'model'"
+      [class.is-complete]="isStepComplete('model')"
+      [attr.aria-current]="step() === 'model' ? 'step' : null"
+      [disabled]="!makeId()"
+      (click)="goToStep('model')"
+    >
+      <span class="garage__step-label">2 · {{ copy('მოდელი', 'Model') }}</span>
+      <span class="garage__step-value">{{ selectedModel()?.name ?? '—' }}</span>
+    </button>
+    <button
+      type="button"
+      class="garage__step"
+      [class.is-active]="step() === 'year'"
+      [class.is-complete]="isStepComplete('year')"
+      [attr.aria-current]="step() === 'year' ? 'step' : null"
+      [disabled]="!modelId()"
+      (click)="goToStep('year')"
+    >
+      <span class="garage__step-label">3 · {{ copy('წელი', 'Year') }}</span>
+      <span class="garage__step-value">{{ year() ?? '—' }}</span>
+    </button>
+    <button
+      type="button"
+      class="garage__step"
+      [class.is-active]="step() === 'trim'"
+      [class.is-complete]="isStepComplete('trim')"
+      [attr.aria-current]="step() === 'trim' ? 'step' : null"
+      [disabled]="!year()"
+      (click)="goToStep('trim')"
+    >
+      <span class="garage__step-label">4 · {{ copy('კომპლექტაცია', 'Configuration') }}</span>
+      <span class="garage__step-value">{{ seasonVehicle() ? '✓' : '—' }}</span>
+    </button>
+  </nav>
+
+  <div class="garage__pane-wrap">
+    <div class="garage__pane" #stepPane>
+      @if (stepLoading()) {
+        <div class="garage__status" role="status">
+          <span class="visually-hidden">{{
+            copy('მონაცემები იტვირთება…', 'Data is loading…')
+          }}</span>
+          <div class="garage__skeleton-grid" aria-hidden="true">
+            @for (item of skeletonItems; track item) {
+              <span class="garage__skeleton"></span>
+            }
+          </div>
+        </div>
+      } @else if (stepLoadError()) {
+        <div class="garage__status garage__status--error" role="alert">
+          <p>
+            {{
+              copy(
+                'ავტომობილების მონაცემები დროებით მიუწვდომელია.',
+                'Vehicle data is temporarily unavailable.'
+              )
+            }}
+          </p>
+          <button type="button" class="garage__retry" (click)="retryStep()">
+            {{ copy('ხელახლა ცდა', 'Try again') }}
+          </button>
+        </div>
+      } @else {
+        @switch (step()) {
+          @case ('make') {
+            <div class="garage__grid">
+              @for (make of filteredMakes(); track make.id) {
+                <button type="button" class="garage__make" (click)="openMake(make)">
+                  <span class="garage__make-mark" aria-hidden="true">
+                    <span class="garage__make-fallback">{{ make.name.slice(0, 2) }}</span>
+                    @if (make.logoUrl) {
+                      <img
+                        class="garage__make-logo"
+                        [src]="make.logoUrl"
+                        alt=""
+                        width="64"
+                        height="64"
+                        loading="lazy"
+                        (error)="onMakeLogoError($event)"
+                      />
+                    }
+                  </span>
+                  <span class="garage__make-name">{{ make.name }}</span>
+                </button>
+              } @empty {
+                <div class="garage__empty">
+                  @if (query()) {
+                    <h2>
+                      {{ copy('ამ სახელით მარკა ვერ მოიძებნა', 'No make found with this name') }}
+                    </h2>
+                    <p>
+                      {{
+                        copy(
+                          'შეამოწმე მართლწერა ან მოძებნე საბურავი პირდაპირ ზომით.',
+                          'Check the spelling or shop directly by tyre size.'
+                        )
+                      }}
+                    </p>
+                    <button type="button" class="garage__clear" (click)="clearSearch()">
+                      {{ copy('ძიების გასუფთავება', 'Clear search') }}
+                    </button>
+                  } @else {
+                    <h2>{{ copy('მარკების სია ცარიელია', 'The make list is empty') }}</h2>
+                    <p>
+                      {{
+                        copy(
+                          'ავტომობილის მონაცემი ვერ მოიძებნა. შეგიძლია საბურავი ზომით მოძებნო.',
+                          'Vehicle data could not be found. You can shop by tyre size instead.'
+                        )
+                      }}
+                    </p>
+                  }
+                  <a class="garage__size-link" href="/catalog"
+                    >{{ copy('ზომით მოძებნა', 'Shop by size') }} →</a
+                  >
+                </div>
+              }
+            </div>
+
+            @if (!query() && garage.recentVehicles().length > 0) {
+              <h2 class="garage__subtitle">{{ copy('ბოლოს არჩეული', 'Recently selected') }}</h2>
+              <div class="garage__recent">
+                @for (vehicle of garage.recentVehicles(); track vehicle.trimId) {
+                  <button type="button" class="garage__chip" (click)="selectRecent(vehicle)">
+                    {{ vehicle.label }}
+                  </button>
+                }
+              </div>
+            }
+          }
+          @case ('model') {
+            <div class="garage__grid">
+              @for (model of filteredModels(); track model.id) {
+                <button type="button" class="garage__model" (click)="openModel(model)">
+                  <span class="garage__make-name">{{ model.name }}</span>
+                  @if (modelMeta(model); as meta) {
+                    <span class="garage__meta num">{{ meta }}</span>
+                  }
+                  @if (model.bodyType) {
+                    <span class="garage__meta">{{ model.bodyType }}</span>
+                  }
+                </button>
+              } @empty {
+                <div class="garage__empty">
+                  <h2>{{ copy('მოდელი ვერ მოიძებნა', 'Model not found') }}</h2>
+                  <p>
+                    {{
+                      copy(
+                        'ძიება გაასუფთავე ან საბურავი პირდაპირ ზომით მოძებნე.',
+                        'Clear the search or shop directly by tyre size.'
+                      )
+                    }}
+                  </p>
+                  @if (query()) {
+                    <button type="button" class="garage__clear" (click)="clearSearch()">
+                      {{ copy('ძიების გასუფთავება', 'Clear search') }}
+                    </button>
+                  }
+                  <a class="garage__size-link" href="/catalog"
+                    >{{ copy('ზომით მოძებნა', 'Shop by size') }} →</a
+                  >
+                </div>
+              }
+            </div>
+          }
+          @case ('year') {
+            <div class="garage__grid">
+              @for (y of years(); track y) {
+                <button type="button" class="garage__model" (click)="openYear(y)">
+                  <span class="garage__make-name num">{{ y }}</span>
+                </button>
+              } @empty {
+                <div class="garage__empty">
+                  <h2>
+                    {{
+                      copy(
+                        'ამ მოდელისთვის წლები ვერ მოიძებნა',
+                        'No production years were found for this model'
+                      )
+                    }}
+                  </h2>
+                  <p>
+                    {{
+                      copy(
+                        'დაბრუნდი მოდელის არჩევაზე ან მოძებნე საბურავი ზომით.',
+                        'Return to model selection or shop by tyre size.'
+                      )
+                    }}
+                  </p>
+                  <a class="garage__size-link" href="/catalog"
+                    >{{ copy('ზომით მოძებნა', 'Shop by size') }} →</a
+                  >
+                </div>
+              }
+            </div>
+          }
+          @case ('trim') {
+            <ul class="garage__trims" role="list">
+              @for (trim of trims(); track trim.id) {
+                <li>
+                  <button type="button" class="garage__trim" (click)="selectTrim(trim)">
+                    <span class="garage__trim-name">{{ trim.name }}</span>
+                    <span class="garage__trim-chips">
+                      <span class="garage__chip-spec num"
+                        >{{ trim.fitment.rimDiametersInch.join('″/') }}″</span
+                      >
+                      <span class="garage__chip-spec num">{{ oemSize(trim) | tireSize }}</span>
+                      @if (trim.fitment.staggered) {
+                        <span class="garage__chip-spec">staggered</span>
+                      }
+                      <span class="garage__chip-spec num">{{ trim.fitment.oemSpeedRating }}</span>
+                    </span>
+                  </button>
+                </li>
+              } @empty {
+                <li class="garage__empty">
+                  <h2>
+                    {{
+                      copy(
+                        'ამ წლისთვის კომპლექტაცია ვერ მოიძებნა',
+                        'No configuration was found for this year'
+                      )
+                    }}
+                  </h2>
+                  <p>
+                    {{
+                      copy(
+                        'სხვა წელი აირჩიე ან მოძებნე საბურავი ზომით.',
+                        'Choose another year or shop by tyre size.'
+                      )
+                    }}
+                  </p>
+                  <a class="garage__size-link" href="/catalog"
+                    >{{ copy('ზომით მოძებნა', 'Shop by size') }} →</a
+                  >
+                </li>
+              }
+            </ul>
+          }
+          @case ('season') {
+            @if (seasonVehicle(); as vehicle) {
+              <section class="garage__season">
+                <div class="garage__season-content">
+                  <header class="garage__season-head">
+                    <span>{{
+                      copy(
+                        'ავტომობილი არჩეულია · სეზონის კონტექსტი',
+                        'Vehicle selected · season context'
+                      )
+                    }}</span>
+                    <h2>
+                      {{ copy('რომელ გარემოში იმოძრავებ?', 'What conditions will you drive in?') }}
+                    </h2>
+                    <p>{{ vehicle.label }}</p>
+                  </header>
+
+                  <div
+                    class="garage__season-options"
+                    role="radiogroup"
+                    [attr.aria-label]="copy('სეზონი', 'Season')"
+                  >
+                    @for (choice of seasonChoices; track choice.id) {
+                      <button
+                        type="button"
+                        role="radio"
+                        class="garage-season-choice"
+                        [class.is-active]="selectedSeason() === choice.id"
+                        [attr.aria-checked]="selectedSeason() === choice.id"
+                        (click)="selectSeason(choice.id)"
+                      >
+                        <span>{{ choice.index }}</span>
+                        <span>
+                          <strong>{{ seasonLabel(choice.id) }}</strong>
+                          <small>{{ seasonCaption(choice.id) }}</small>
+                        </span>
+                        <i aria-hidden="true"></i>
+                      </button>
+                    }
+                  </div>
+
+                  <div class="garage__season-action">
+                    <div aria-live="polite">
+                      <span>{{ activeSeasonChoice().temperature }}</span>
+                      <strong>{{ seasonSurface(activeSeasonChoice().id) }}</strong>
+                    </div>
+                    <button type="button" (click)="goNow()">
+                      <span>{{
+                        copy('კონფიგურატორში გაგრძელება', 'Continue to configurator')
+                      }}</span>
+                      <span aria-hidden="true">↗</span>
+                    </button>
+                  </div>
+                </div>
+              </section>
+            }
+          }
+        }
+      }
+    </div>
+  </div>
+</section>

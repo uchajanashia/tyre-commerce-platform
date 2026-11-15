@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2400 1260" width="2400" height="1260" fill="none">
+  <defs>
+    <linearGradient id="paint" x1="0" y1="279" x2="0" y2="1125" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#3d3d46"/>
+      <stop offset="0.32" stop-color="#2c2c33"/>
+      <stop offset="0.6" stop-color="#222228"/>
+      <stop offset="1" stop-color="#17171b"/>
+    </linearGradient>
+    <linearGradient id="glass" x1="0" y1="279" x2="0" y2="630" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#565c6e"/>
+      <stop offset="1" stop-color="#2b2e38"/>
+    </linearGradient>
+    <radialGradient id="rimFace" cx="0.35" cy="0.32" r="0.75">
+      <stop offset="0" stop-color="#54575e"/>
+      <stop offset="0.6" stop-color="#3a3d44"/>
+      <stop offset="1" stop-color="#2a2c31"/>
+    </radialGradient>
+    <linearGradient id="rimSpoke" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#3a3d44"/>
+      <stop offset="1" stop-color="#222327"/>
+    </linearGradient>
+  </defs>
+  <circle cx="575" cy="990" r="234" fill="#0a0a0c"/><path d="M 336.5 990 A 238.5 238.5 0 0 1 813.5 990" fill="none" stroke="#ffffff14" stroke-width="3"/>
+  <circle cx="1820" cy="990" r="234" fill="#0a0a0c"/><path d="M 1581.5 990 A 238.5 238.5 0 0 1 2058.5 990" fill="none" stroke="#ffffff14" stroke-width="3"/>
+  <path d="M 170 1125 Q 129.5 990 147.5 756 Q 156.5 648 246.5 630 L 800 630 Q 914.7 288 1086.7 279 Q 1304.4 301.5 1482.5 648 Q 1775 666 2157.5 711 Q 2247.5 729 2238.5 855 Q 2247.5 1071 2193.5 1125 Z" fill="url(#paint)" stroke="#ffffff1f" stroke-width="3"/>
+  <path d="M 372.5 729 Q 1197.5 702 2000 715.5" fill="none" stroke="#4d5566" stroke-width="2" opacity="0.4"/>
+  <path d="M 719 657 C 723.5 783 723.5 972 710 1107" fill="none" stroke="#0d0d10" stroke-width="3" opacity="0.85"/>
+  <path d="M 1649 657 C 1653.5 783 1653.5 972 1640 1107" fill="none" stroke="#0d0d10" stroke-width="3" opacity="0.85"/>
+  <path d="M 848.6 617.9 Q 960.9 319.5 1086.7 319.5 Q 1292.5 342 1446 621.9 Z" fill="url(#glass)" opacity="0.92"/>
+  <rect x="1122.7" y="319.5" width="45" height="294.3" fill="url(#paint)"/>
+  <path d="M 1446 621.9 L 1504.5 599.4 L 1473 653.4 Z" fill="#1f2027"/>
+  <path d="M 246.5 630 L 800 630 Q 914.7 288 1086.7 279 Q 1304.4 301.5 1482.5 648 Q 1775 666 2157.5 711" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" opacity="0.5"/>
+  <line x1="282.5" y1="765" x2="2067.5" y2="765" stroke="#ffffff21" stroke-width="3"/>
+  <ellipse cx="2184.5" cy="769.5" rx="36" ry="12.6" fill="#dceeff" opacity="0.55" transform="rotate(-8 2184.5 769.5)"/>
+  <ellipse cx="201.5" cy="819" rx="22.5" ry="29.3" fill="#ff3b47" opacity="0.45"/>
+  <circle cx="575" cy="990" r="225" fill="#08080a"/><circle cx="575" cy="990" r="163.9" fill="url(#rimFace)"/><circle cx="575" cy="990" r="157.3" fill="#23252a"/><line x1="575" y1="990" x2="575" y2="855.6" stroke="url(#rimSpoke)" stroke-width="19.7" stroke-linecap="round"/><line x1="575" y1="990" x2="702.8" y2="948.5" stroke="url(#rimSpoke)" stroke-width="19.7" stroke-linecap="round"/><line x1="575" y1="990" x2="654" y2="1098.7" stroke="url(#rimSpoke)" stroke-width="19.7" stroke-linecap="round"/><line x1="575" y1="990" x2="496" y2="1098.7" stroke="url(#rimSpoke)" stroke-width="19.7" stroke-linecap="round"/><line x1="575" y1="990" x2="447.2" y2="948.5" stroke="url(#rimSpoke)" stroke-width="19.7" stroke-linecap="round"/><circle cx="575" cy="990" r="32.8" fill="#16171a" stroke="#4a4d54" stroke-width="3"/><circle cx="529.1" cy="937.6" r="26.2" fill="#ffffff" opacity="0.08"/>
+  <circle cx="1820" cy="990" r="225" fill="#08080a"/><circle cx="1820" cy="990" r="163.9" fill="url(#rimFace)"/><circle cx="1820" cy="990" r="157.3" fill="#23252a"/><line x1="1820" y1="990" x2="1820" y2="855.6" stroke="url(#rimSpoke)" stroke-width="19.7" stroke-linecap="round"/><line x1="1820" y1="990" x2="1947.8" y2="948.5" stroke="url(#rimSpoke)" stroke-width="19.7" stroke-linecap="round"/><line x1="1820" y1="990" x2="1899" y2="1098.7" stroke="url(#rimSpoke)" stroke-width="19.7" stroke-linecap="round"/><line x1="1820" y1="990" x2="1741" y2="1098.7" stroke="url(#rimSpoke)" stroke-width="19.7" stroke-linecap="round"/><line x1="1820" y1="990" x2="1692.2" y2="948.5" stroke="url(#rimSpoke)" stroke-width="19.7" stroke-linecap="round"/><circle cx="1820" cy="990" r="32.8" fill="#16171a" stroke="#4a4d54" stroke-width="3"/><circle cx="1774.1" cy="937.6" r="26.2" fill="#ffffff" opacity="0.08"/>
+  <text x="147.5" y="166.5" fill="#9c9b94" opacity="0.28" font-family="system-ui, sans-serif" font-size="34" letter-spacing="6">C-CLASS W206 · PLACEHOLDER RENDER</text>
+</svg>

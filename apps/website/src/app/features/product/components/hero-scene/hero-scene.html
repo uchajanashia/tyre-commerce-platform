@@ -1,0 +1,168 @@
+<div class="hero">
+  @if (passengerVehicle(); as vehicle) {
+    <div class="hero__scene-wrap">
+      <div class="hero__scene scene" [style.aspect-ratio]="canvasWidth + ' / ' + canvasHeight">
+        @for (slot of passengerWheelSlots(); track slot.anchor.id) {
+          <div
+            class="scene__wheel"
+            [style.left.%]="pct(slot.anchor.cx, canvasWidth)"
+            [style.top.%]="pct(slot.anchor.cy, canvasHeight)"
+            [style.width.%]="pct(slot.anchor.outerRadius * 2, canvasWidth)"
+            [style.height.%]="pct(slot.anchor.outerRadius * 2, canvasHeight)"
+          >
+            @if (slot.photo; as p) {
+              <img
+                class="scene__wheel-photo"
+                [src]="p"
+                alt=""
+                width="320"
+                height="320"
+                draggable="false"
+                loading="eager"
+                fetchpriority="auto"
+                decoding="async"
+              />
+            }
+          </div>
+        }
+
+        @for (item of passengerImage(); track item.classification) {
+          <img
+            class="scene__layer scene__vehicle"
+            [src]="item.url"
+            alt=""
+            width="2400"
+            height="1350"
+            loading="eager"
+            fetchpriority="high"
+            decoding="async"
+            aria-hidden="true"
+            (error)="onVehicleImageError($event, item.classification)"
+          />
+        }
+      </div>
+      <p class="hero__scene-note">{{ sceneLabel() }}</p>
+    </div>
+  } @else if (showLegacyScene()) {
+    <div class="hero__scene-wrap" [class.hero__scene-wrap--disk]="isDisk()">
+      <div class="hero__scene scene" [style.aspect-ratio]="canvasWidth + ' / ' + canvasHeight">
+        <img
+          class="scene__layer"
+          [src]="scene().shadowUrl"
+          [attr.srcset]="responsiveSceneSrcset(scene().shadowUrl)"
+          [attr.sizes]="sceneSizes"
+          alt=""
+          width="2400"
+          height="1350"
+          loading="eager"
+          fetchpriority="high"
+          decoding="async"
+          aria-hidden="true"
+        />
+
+        @for (slot of wheelSlots(); track slot.anchor.id) {
+          <div
+            class="scene__wheel"
+            [style.left.%]="pct(slot.anchor.cx, canvasWidth)"
+            [style.top.%]="pct(slot.anchor.cy, canvasHeight)"
+            [style.width.%]="pct(slot.anchor.outerRadius * 2, canvasWidth)"
+            [style.height.%]="pct(slot.anchor.outerRadius * 2, canvasHeight)"
+          >
+            @if (slot.photo; as p) {
+              <img
+                class="scene__wheel-photo"
+                [src]="p"
+                alt=""
+                width="320"
+                height="320"
+                draggable="false"
+                loading="eager"
+                fetchpriority="auto"
+                decoding="async"
+              />
+            } @else {
+              <div
+                class="scene__wheel-fallback"
+                [style.background-image]="'url(' + scene().fallbackUrl + ')'"
+                [style.background-size]="
+                  slot.fallbackStyle.sizeXPercent + '% ' + slot.fallbackStyle.sizeYPercent + '%'
+                "
+                [style.background-position]="
+                  slot.fallbackStyle.posXPercent + '% ' + slot.fallbackStyle.posYPercent + '%'
+                "
+              ></div>
+            }
+          </div>
+        }
+
+        <img
+          class="scene__layer"
+          [src]="scene().bodyUrl"
+          [attr.srcset]="responsiveSceneSrcset(scene().bodyUrl)"
+          [attr.sizes]="sceneSizes"
+          alt=""
+          width="2400"
+          height="1350"
+          loading="eager"
+          fetchpriority="high"
+          decoding="async"
+          aria-hidden="true"
+        />
+        <img
+          class="scene__layer"
+          [src]="scene().occlusionUrl"
+          [attr.srcset]="responsiveSceneSrcset(scene().occlusionUrl)"
+          [attr.sizes]="sceneSizes"
+          alt=""
+          width="2400"
+          height="1350"
+          loading="eager"
+          fetchpriority="high"
+          decoding="async"
+          aria-hidden="true"
+        />
+      </div>
+      <p class="hero__scene-note">{{ sceneLabel() }}</p>
+    </div>
+  }
+
+  @if (galleryPhotos().length > 0) {
+    <div class="hero__photo" [class.hero__photo--single]="galleryPhotos().length === 1">
+      <div class="hero__gallery">
+        @for (p of galleryPhotos(); track p; let i = $index) {
+          <button
+            type="button"
+            class="hero__image"
+            [class.hero__image--primary]="i === 0"
+            [attr.aria-label]="photoLabel(i)"
+            (click)="openPhoto(i)"
+          >
+            <img
+              [src]="p"
+              alt=""
+              draggable="false"
+              [attr.loading]="i === 0 && !hasVehicleScene() ? 'eager' : 'lazy'"
+              [attr.fetchpriority]="i === 0 && !hasVehicleScene() ? 'high' : 'low'"
+              decoding="async"
+            />
+          </button>
+        }
+      </div>
+
+      @if (category(); as cat) {
+        <span class="hero__badge">
+          <app-season-symbol [symbol]="cat.symbol" />
+          <span>{{ categoryLabel(cat) }}</span>
+        </span>
+      }
+    </div>
+  }
+</div>
+
+@if (lightboxOpen()) {
+  <app-photo-lightbox
+    [photos]="galleryPhotos()"
+    [startIndex]="activeIndex()"
+    (closed)="lightboxOpen.set(false)"
+  />
+}

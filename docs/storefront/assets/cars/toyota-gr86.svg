@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2400 1260" width="2400" height="1260" fill="none">
+  <defs>
+    <linearGradient id="paint" x1="0" y1="370.5" x2="0" y2="1149" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#3d3d46"/>
+      <stop offset="0.32" stop-color="#2c2c33"/>
+      <stop offset="0.6" stop-color="#222228"/>
+      <stop offset="1" stop-color="#17171b"/>
+    </linearGradient>
+    <linearGradient id="glass" x1="0" y1="370.5" x2="0" y2="654" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#565c6e"/>
+      <stop offset="1" stop-color="#2b2e38"/>
+    </linearGradient>
+    <radialGradient id="rimFace" cx="0.35" cy="0.32" r="0.75">
+      <stop offset="0" stop-color="#54575e"/>
+      <stop offset="0.6" stop-color="#3a3d44"/>
+      <stop offset="1" stop-color="#2a2c31"/>
+    </radialGradient>
+    <linearGradient id="rimSpoke" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#3a3d44"/>
+      <stop offset="1" stop-color="#222327"/>
+    </linearGradient>
+  </defs>
+  <circle cx="560" cy="1005" r="234" fill="#0a0a0c"/><path d="M 321.5 1005 A 238.5 238.5 0 0 1 798.5 1005" fill="none" stroke="#ffffff14" stroke-width="3"/>
+  <circle cx="1845" cy="1005" r="234" fill="#0a0a0c"/><path d="M 1606.5 1005 A 238.5 238.5 0 0 1 2083.5 1005" fill="none" stroke="#ffffff14" stroke-width="3"/>
+  <path d="M 177.5 1149 Q 137 1014 155 780 Q 164 672 254 654 L 627.5 654 Q 757.8 379.5 953.4 370.5 Q 1245.8 393 1485 672 Q 1800 690 2205 735 Q 2295 753 2286 879 Q 2295 1095 2241 1149 Z" fill="url(#paint)" stroke="#ffffff1f" stroke-width="3"/>
+  <path d="M 380 753 Q 1225 726 2047.5 739.5" fill="none" stroke="#4d5566" stroke-width="2" opacity="0.4"/>
+  <path d="M 704 681 C 708.5 807 708.5 996 695 1131" fill="none" stroke="#0d0d10" stroke-width="3" opacity="0.85"/>
+  <path d="M 1674 681 C 1678.5 807 1678.5 996 1665 1131" fill="none" stroke="#0d0d10" stroke-width="3" opacity="0.85"/>
+  <path d="M 676.1 641.9 Q 804.9 411 953.4 411 Q 1229.8 433.5 1448.5 645.9 Z" fill="url(#glass)" opacity="0.92"/>
+  <rect x="989.4" y="411" width="45" height="226.8" fill="url(#paint)"/>
+  <path d="M 1448.5 645.9 L 1507 623.4 L 1475.5 677.4 Z" fill="#1f2027"/>
+  <path d="M 254 654 L 627.5 654 Q 757.8 379.5 953.4 370.5 Q 1245.8 393 1485 672 Q 1800 690 2205 735" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" opacity="0.5"/>
+  <line x1="290" y1="789" x2="2115" y2="789" stroke="#ffffff21" stroke-width="3"/>
+  <ellipse cx="2232" cy="793.5" rx="36" ry="12.6" fill="#dceeff" opacity="0.55" transform="rotate(-8 2232 793.5)"/>
+  <ellipse cx="209" cy="843" rx="22.5" ry="29.3" fill="#ff3b47" opacity="0.45"/>
+  <circle cx="560" cy="1005" r="225" fill="#08080a"/><circle cx="560" cy="1005" r="163.5" fill="url(#rimFace)"/><circle cx="560" cy="1005" r="157" fill="#23252a"/><line x1="560" y1="1005" x2="560" y2="870.9" stroke="url(#rimSpoke)" stroke-width="19.6" stroke-linecap="round"/><line x1="560" y1="1005" x2="687.5" y2="963.6" stroke="url(#rimSpoke)" stroke-width="19.6" stroke-linecap="round"/><line x1="560" y1="1005" x2="638.8" y2="1113.5" stroke="url(#rimSpoke)" stroke-width="19.6" stroke-linecap="round"/><line x1="560" y1="1005" x2="481.2" y2="1113.5" stroke="url(#rimSpoke)" stroke-width="19.6" stroke-linecap="round"/><line x1="560" y1="1005" x2="432.5" y2="963.6" stroke="url(#rimSpoke)" stroke-width="19.6" stroke-linecap="round"/><circle cx="560" cy="1005" r="32.7" fill="#16171a" stroke="#4a4d54" stroke-width="3"/><circle cx="514.2" cy="952.7" r="26.2" fill="#ffffff" opacity="0.08"/>
+  <circle cx="1845" cy="1005" r="225" fill="#08080a"/><circle cx="1845" cy="1005" r="163.5" fill="url(#rimFace)"/><circle cx="1845" cy="1005" r="157" fill="#23252a"/><line x1="1845" y1="1005" x2="1845" y2="870.9" stroke="url(#rimSpoke)" stroke-width="19.6" stroke-linecap="round"/><line x1="1845" y1="1005" x2="1972.5" y2="963.6" stroke="url(#rimSpoke)" stroke-width="19.6" stroke-linecap="round"/><line x1="1845" y1="1005" x2="1923.8" y2="1113.5" stroke="url(#rimSpoke)" stroke-width="19.6" stroke-linecap="round"/><line x1="1845" y1="1005" x2="1766.2" y2="1113.5" stroke="url(#rimSpoke)" stroke-width="19.6" stroke-linecap="round"/><line x1="1845" y1="1005" x2="1717.5" y2="963.6" stroke="url(#rimSpoke)" stroke-width="19.6" stroke-linecap="round"/><circle cx="1845" cy="1005" r="32.7" fill="#16171a" stroke="#4a4d54" stroke-width="3"/><circle cx="1799.2" cy="952.7" r="26.2" fill="#ffffff" opacity="0.08"/>
+  <text x="155" y="258" fill="#9c9b94" opacity="0.28" font-family="system-ui, sans-serif" font-size="34" letter-spacing="6">GR86 ZN8 · PLACEHOLDER RENDER</text>
+</svg>

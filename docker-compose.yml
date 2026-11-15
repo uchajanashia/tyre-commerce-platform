@@ -1,0 +1,32 @@
+name: tyre-portfolio-local
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: tyre_demo
+      POSTGRES_USER: tyre_demo
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Run node tools/setup-local.mjs first}
+    ports:
+      - "127.0.0.1:55433:5432"
+    volumes:
+      - tyre_demo_db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tyre_demo -d tyre_demo"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+  storage:
+    profiles: ["storage"]
+    image: ${TYRE_MINIO_IMAGE:-minio/minio:latest}
+    command: server /data --console-address :9001
+    environment:
+      MINIO_ROOT_USER: tyre_demo
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:?Run node tools/setup-local.mjs first}
+    ports:
+      - "127.0.0.1:59100:9000"
+      - "127.0.0.1:59101:9001"
+    volumes:
+      - tyre_demo_storage:/data
+volumes:
+  tyre_demo_db:
+  tyre_demo_storage:

@@ -1,0 +1,1916 @@
+// tyre.ge — Prisma schema (v1 foundation).
+// Models the REAL catalog (wheels_catalog.json, 606 products) per docs/03-DATA-MODEL.md.
+// Field nullability and numeric types were derived from the actual export:
+//   - width / rimDiameter are Float (fractional sizes exist: 11.75, 19.5, 22.5)
+//   - profile is Int? (aspect ratio; null for ~7% of rows — many commercial/truck)
+//   - season / seasonGroup / country are null only for the 3 disks
+//   - loadSpeedIndex / plyRating / treadType / overallDiameter are sparse → nullable
+// No data is seeded here; seeding + endpoints are later tasks.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum ProductType {
+  tire
+  disk
+}
+
+enum VehicleClass {
+  passenger
+  truck
+}
+
+enum SizeSystem {
+  metric
+  inch
+}
+
+enum Construction {
+  radial
+  bias
+}
+
+enum SeasonGroup {
+  summer
+  all_season
+  winter // not present in the current export; the model supports it for the future
+}
+
+enum StockStatus {
+  in_stock
+  limited
+  out_of_stock
+}
+
+enum OrderStatus {
+  draft
+  awaiting_payment
+  paid
+  failed
+  cancelled
+  expired
+}
+
+enum PaymentAttemptStatus {
+  created
+  pending
+  succeeded
+  failed
+  cancelled
+  expired
+}
+
+/// Current catalog/admin permissions require `global`. Scoped grants are stored
+/// now but cannot satisfy unscoped guards until their domain ships.
+enum PermissionScopeType {
+  global
+  warehouse
+  channel
+  company
+}
+
+enum StaffAccountStatus {
+  invited
+  pending_activation
+  active
+  disabled
+}
+
+enum StaffInvitationPurpose {
+  invite
+  password_reset
+  recovery
+}
+
+enum StaffInvitationDeliveryStatus {
+  pending
+  accepted
+  failed
+  manual
+}
+
+enum SecretDeliveryEnvelopeState {
+  pending
+  delivering
+  delivered
+  failed
+  expired
+}
+
+enum MfaCredentialStatus {
+  pending
+  confirmed
+  revoked
+}
+
+enum AuthChallengePurpose {
+  login_mfa
+  enroll_mfa
+  step_up
+}
+
+enum StaffRecoveryRequestState {
+  pending
+  rejected
+  executed
+  expired
+}
+
+enum AuthThrottleKind {
+  login_ip
+  login_account
+  mfa_account
+  step_up_account
+  public_ip
+  public_identity
+}
+
+enum IdentityKeyRotationState {
+  running
+  completed
+  failed
+}
+
+enum IdentityKeyCompromiseState {
+  handling
+  completed
+  failed
+}
+
+enum IdentityArtifactReissueState {
+  pending
+  issued
+  failed
+}
+
+enum ApprovalPolicyProposalState {
+  proposed
+  under_review
+  approved
+  rejected
+  active
+  retired
+}
+
+enum ApprovalPolicyMode {
+  disabled
+  direct
+  approval_required
+}
+
+enum ApprovalReviewValue {
+  approve
+  reject
+}
+
+enum ApprovalPolicyActivationKind {
+  activate
+  retire
+}
+
+enum ApprovalRequestState {
+  pending
+  approved
+  rejected
+  cancelled
+  expired
+  stale
+}
+
+enum ApprovalDecisionValue {
+  approve
+  reject
+}
+
+enum ApprovalExecutionState {
+  authorized
+}
+
+/// One table for both tires and disks, distinguished by `productType`
+/// (disk-only / tire-only attributes are left nullable).
+model Product {
+  // Identity & classification
+  /// Real SKU and primary identifier, e.g. "002277" (id === code in the source export).
+  id                    String       @id
+  code                  String       @unique
+  /// URL-friendly, e.g. "155r12c-roadx-002277".
+  slug                  String       @unique
+  productType           ProductType
+  vehicleClass          VehicleClass
+  /// Deterministic storefront vehicle image key. Nullable so the idempotent
+  /// maintenance backfill can be dry-run before production writes.
+  vehicleClassification String?
+  brand                 Brand        @relation(fields: [brandId], references: [id])
+  brandId               String
+  /// Groups variants of the same model/pattern. Superseded by tireModelId as the
+  /// canonical grouping FK; kept as the migration audit trail (do not drop yet).
+  patternKey            String
+  /// FK to the model this size belongs to. Backfilled and made required by
+  /// scripts/backfill-tire-models.ts (see migration 2 for the NOT NULL cutover).
+  tireModel             TireModel    @relation(fields: [tireModelId], references: [id])
+  tireModelId           String
+  orderItems            OrderItem[]
+
+  // Size & technical
+  /// Raw size string, e.g. "155R12C", "175/70R12", "11.75R19.5". The source of truth.
+  size            String
+  /// Width notation system. Metric uses millimetres; inch keeps the complete
+  /// manufacturer/sidewall size (numeric, flotation or industrial) intact.
+  sizeSystem      SizeSystem   @default(metric)
+  /// mm for passenger metric sizes; inches for some truck/disk sizes → Float.
+  width           Float
+  /// Aspect ratio; null for many commercial/truck tires.
+  profile         Int?
+  /// Inches; fractional for truck/bus (19.5, 22.5) → Float.
+  rimDiameter     Float
+  /// Filter label, e.g. "R-12", "R-22.5", "R-16C".
+  radius          String
+  construction    Construction
+  /// The "C" (commercial) lines.
+  commercial      Boolean
+  /// Rarely present (~2%).
+  overallDiameter Float?
+  /// e.g. "88/86P".
+  loadSpeedIndex  String?
+  plyRating       String?
+  /// H/T, M/T, A/T — mostly truck.
+  treadType       String?
+  /// e.g. "ახალი/მსუბუქი-C".
+  application     String
+
+  // Season
+  /// Raw season string, e.g. "M+S", "ზაფხული", "H/T".
+  season      String?
+  /// Normalized for filtering; null for the 3 disks.
+  seasonGroup SeasonGroup?
+
+  // Origin & unit
+  country String?
+  /// e.g. "ცალი".
+  unit    String
+
+  // Pricing & stock
+  /// Shown on the storefront (GEL, integer).
+  retailPrice    Int
+  /// Stored, never shown to anonymous users; B2B only, later.
+  wholesalePrice Int
+  currency       String      @default("GEL")
+  stockStatus    StockStatus @default(in_stock)
+  /// Optional exact count when the shop wants it.
+  stockQty       Int?
+  reservedQty    Int @default(0)
+  reservations   StockReservation[]
+  stockMovements StockMovement[]
+
+  // Content
+  /// Product name. Today only Georgian (raw); becomes per-language later.
+  name String
+
+  // TODO (later phase — images): add a ProductImage relation / images field.
+  //   The catalog carries image / images[] / imageSuggestedName / hasImage; not modeled yet.
+  // TODO (later phase — i18n): product name/description per language (ka/en/ru),
+  //   either JSON columns or a Translation table (decided at build time). Not modeled yet.
+
+  // Admin & lifecycle
+  isPublished Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Indexes for the known catalog filters (docs/03-DATA-MODEL.md "Filters").
+  @@index([vehicleClass])
+  @@index([vehicleClassification])
+  @@index([sizeSystem])
+  @@index([productType])
+  @@index([seasonGroup])
+  @@index([radius])
+  @@index([brandId])
+  @@index([commercial])
+  @@index([tireModelId])
+}
+
+/// The raw catalog stores brand as a plain string; we normalize it to a table so
+/// admin can manage logos/details later. 29 real brands (ROADX, JINYU, BEARWAY, ...).
+model Brand {
+  id             String  @id
+  name           String  @unique
+  /// Most common origin for the brand (nullable).
+  defaultCountry String?
+  notes          String?
+
+  // TODO (later phase): logo asset once images are added.
+
+  products   Product[]
+  tireModels TireModel[]
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+}
+
+/// A tire "model" (e.g. "ROADX RXQUEST C02"): one photo set applies to every size
+/// (Product row) of the model. Backfilled from the normalized patternKey grouping
+/// verified in scripts/verify-model-grouping.ts.
+model TireModel {
+  id      String @id @default(cuid())
+  brand   Brand  @relation(fields: [brandId], references: [id])
+  brandId String
+  /// Display name, e.g. "RXQUEST C02" (brand prefix stripped).
+  name    String
+  /// URL-friendly, unique within the brand (not globally).
+  slug    String
+
+  products  Product[]
+  photos    TireModelPhoto[]
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  @@unique([brandId, slug])
+}
+
+/// Ordered photo list for a TireModel (today: front/side per the test folder
+/// convention, but not constrained to exactly two — position is a free ordering int).
+model TireModelPhoto {
+  id          String    @id @default(cuid())
+  tireModel   TireModel @relation(fields: [tireModelId], references: [id], onDelete: Cascade)
+  tireModelId String
+  url         String
+  position    Int
+  createdAt   DateTime  @default(now())
+
+  @@index([tireModelId])
+}
+
+/// A single admin/staff account. Few users expected; no self-service signup.
+model Admin {
+  id                       String                 @id @default(cuid())
+  email                    String                 @unique
+  /// Nullable only for the pre-cutover staged canonical backfill. Identity v2
+  /// startup requires SecurityControl.identityCanonicalizationVersion = 1.
+  emailNormalized          String?                @unique
+  displayName              String?
+  passwordHash             String?
+  /// Kept for wire/backward compatibility; authorization uses roleAssignments.
+  role                     String                 @default("admin")
+  enabled                  Boolean                @default(false)
+  status                   StaffAccountStatus     @default(pending_activation)
+  version                  Int                    @default(1)
+  credentialVersion        Int                    @default(1)
+  mfaVersion               Int                    @default(1)
+  mfaRequired              Boolean                @default(false)
+  passwordChangedAt        DateTime?
+  activatedAt              DateTime?
+  disabledAt               DateTime?
+  disabledReason           String?
+  createdById              String?
+  createdBy                Admin?                 @relation("AdminCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  createdStaff             Admin[]                @relation("AdminCreatedBy")
+  /// Incrementing this immediately invalidates every previously issued JWT.
+  tokenVersion             Int                    @default(1)
+  roleAssignments          AdminRoleAssignment[]
+  sessions                 StaffSession[]         @relation("StaffSessions")
+  sessionsRevoked          StaffSession[]         @relation("SessionRevoker")
+  invitations              StaffInvitation[]      @relation("InvitedStaff")
+  invitationsCreated       StaffInvitation[]      @relation("InvitationCreator")
+  mfaCredentials           MfaCredential[]
+  mfaRecoveryCodes         MfaRecoveryCode[]
+  authChallenges           AuthChallenge[]
+  recoveryRequestsTarget   StaffRecoveryRequest[] @relation("RecoveryTarget")
+  recoveryRequestsCreated  StaffRecoveryRequest[] @relation("RecoveryRequester")
+  recoveryRequestsApproved StaffRecoveryRequest[] @relation("RecoveryApprover")
+  securityControlUpdates   SecurityControl[]      @relation("SecurityControlUpdater")
+  createdAt                DateTime               @default(now())
+  updatedAt                DateTime               @updatedAt
+
+  @@index([status])
+}
+
+model StaffSession {
+  id                   String                   @id @default(cuid())
+  staffUserId          String
+  staffUser            Admin                    @relation("StaffSessions", fields: [staffUserId], references: [id], onDelete: Cascade)
+  familyId             String                   @unique @default(cuid())
+  authContractVersion  Int                      @default(2)
+  tokenVersionSnapshot Int
+  createdAt            DateTime                 @default(now())
+  lastSeenAt           DateTime                 @default(now())
+  idleExpiresAt        DateTime
+  absoluteExpiresAt    DateTime
+  revokedAt            DateTime?
+  revokeReason         String?
+  revokedById          String?
+  revokedBy            Admin?                   @relation("SessionRevoker", fields: [revokedById], references: [id], onDelete: SetNull)
+  deviceLabel          String?
+  browserFamily        String?
+  osFamily             String?
+  mfaSatisfiedAt       DateTime?
+  authMethod           String
+  refreshTokens        RefreshToken[]
+  rotationReceipts     RefreshRotationReceipt[]
+  challenges           AuthChallenge[]
+
+  @@index([staffUserId, revokedAt])
+  @@index([idleExpiresAt])
+  @@index([absoluteExpiresAt])
+}
+
+model RefreshToken {
+  /// Public selector from the `<selector>.<secret>` cookie value.
+  id                 String                  @id
+  sessionId          String
+  session            StaffSession            @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  tokenDigest        String
+  digestKeyId        String
+  issuedAt           DateTime                @default(now())
+  expiresAt          DateTime
+  usedAt             DateTime?
+  revokedAt          DateTime?
+  replacedByTokenId  String?                 @unique
+  replacedBy         RefreshToken?           @relation("RefreshRotation", fields: [replacedByTokenId], references: [id], onDelete: SetNull)
+  predecessor        RefreshToken?           @relation("RefreshRotation")
+  predecessorReceipt RefreshRotationReceipt? @relation("ReceiptPredecessor")
+  successorReceipt   RefreshRotationReceipt? @relation("ReceiptSuccessor")
+
+  @@index([sessionId, expiresAt])
+  @@index([sessionId, usedAt, revokedAt])
+}
+
+model RefreshRotationReceipt {
+  id                  String       @id @default(cuid())
+  predecessorId       String       @unique
+  predecessor         RefreshToken @relation("ReceiptPredecessor", fields: [predecessorId], references: [id], onDelete: Cascade)
+  successorId         String       @unique
+  successor           RefreshToken @relation("ReceiptSuccessor", fields: [successorId], references: [id], onDelete: Cascade)
+  sessionId           String
+  session             StaffSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  familyId            String
+  encryptionKeyId     String
+  nonce               Bytes?
+  ciphertext          Bytes?
+  authTag             Bytes?
+  expiresAt           DateTime
+  ciphertextClearedAt DateTime?
+  createdAt           DateTime     @default(now())
+
+  @@index([expiresAt, ciphertextClearedAt])
+  @@index([sessionId])
+}
+
+model StaffInvitation {
+  id                String                        @id @default(cuid())
+  staffUserId       String
+  staffUser         Admin                         @relation("InvitedStaff", fields: [staffUserId], references: [id], onDelete: Cascade)
+  purpose           StaffInvitationPurpose
+  selector          String                        @unique
+  tokenDigest       String
+  digestKeyId       String
+  expiresAt         DateTime
+  consumedAt        DateTime?
+  revokedAt         DateTime?
+  createdById       String
+  createdBy         Admin                         @relation("InvitationCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  deliveryStatus    StaffInvitationDeliveryStatus @default(pending)
+  deliveryReference String?
+  attempt           Int                           @default(1)
+  createdAt         DateTime                      @default(now())
+  envelope          SecretDeliveryEnvelope?
+
+  @@index([staffUserId, purpose, consumedAt, revokedAt])
+  @@index([expiresAt])
+}
+
+model SecretDeliveryEnvelope {
+  id                  String                      @id @default(cuid())
+  invitationId        String                      @unique
+  invitation          StaffInvitation             @relation(fields: [invitationId], references: [id], onDelete: Cascade)
+  purpose             StaffInvitationPurpose
+  recipientHash       String
+  correlationId       String
+  encryptionKeyId     String
+  nonce               Bytes?
+  ciphertext          Bytes?
+  authTag             Bytes?
+  expiresAt           DateTime
+  state               SecretDeliveryEnvelopeState @default(pending)
+  attemptCount        Int                         @default(0)
+  lastErrorCode       String?
+  deliveredAt         DateTime?
+  ciphertextClearedAt DateTime?
+  createdAt           DateTime                    @default(now())
+  updatedAt           DateTime                    @updatedAt
+  outbox              SecretDeliveryOutbox?
+
+  @@index([state, expiresAt])
+}
+
+model SecretDeliveryOutbox {
+  id            String                 @id @default(cuid())
+  envelopeId    String                 @unique
+  envelope      SecretDeliveryEnvelope @relation(fields: [envelopeId], references: [id], onDelete: Cascade)
+  availableAt   DateTime               @default(now())
+  claimedAt     DateTime?
+  completedAt   DateTime?
+  attemptCount  Int                    @default(0)
+  lastErrorCode String?
+  createdAt     DateTime               @default(now())
+
+  @@index([completedAt, availableAt])
+}
+
+model MfaCredential {
+  id               String              @id @default(cuid())
+  staffUserId      String
+  staffUser        Admin               @relation(fields: [staffUserId], references: [id], onDelete: Cascade)
+  type             String              @default("totp")
+  secretCiphertext Bytes
+  encryptionKeyId  String
+  nonce            Bytes
+  authTag          Bytes
+  version          Int                 @default(1)
+  status           MfaCredentialStatus @default(pending)
+  expiresAt        DateTime?
+  confirmedAt      DateTime?
+  revokedAt        DateTime?
+  lastUsedStep     Int?
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+  challenges       AuthChallenge[]
+
+  @@index([staffUserId, status])
+}
+
+model MfaRecoveryCode {
+  id          String    @id
+  staffUserId String
+  staffUser   Admin     @relation(fields: [staffUserId], references: [id], onDelete: Cascade)
+  codeDigest  String
+  digestKeyId String
+  createdAt   DateTime  @default(now())
+  usedAt      DateTime?
+  revokedAt   DateTime?
+
+  @@index([staffUserId, usedAt, revokedAt])
+}
+
+model AuthChallenge {
+  /// Public selector from the `<selector>.<secret>` challenge value.
+  id                        String               @id
+  staffUserId               String
+  staffUser                 Admin                @relation(fields: [staffUserId], references: [id], onDelete: Cascade)
+  purpose                   AuthChallengePurpose
+  tokenDigest               String
+  digestKeyId               String
+  tokenVersionSnapshot      Int
+  credentialVersionSnapshot Int
+  mfaVersionSnapshot        Int
+  sessionId                 String?
+  session                   StaffSession?        @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  credentialId              String?
+  credential                MfaCredential?       @relation(fields: [credentialId], references: [id], onDelete: Cascade)
+  credentialRecordVersion   Int?
+  proofVersion              Int?
+  requestedActionHash       String?
+  expiresAt                 DateTime
+  remainingAttempts         Int                  @default(5)
+  consumedAt                DateTime?
+  revokedAt                 DateTime?
+  createdAt                 DateTime             @default(now())
+
+  @@index([staffUserId, purpose, expiresAt])
+  @@index([sessionId])
+}
+
+model StaffRecoveryRequest {
+  id                         String                    @id @default(cuid())
+  targetStaffId              String
+  targetStaff                Admin                     @relation("RecoveryTarget", fields: [targetStaffId], references: [id], onDelete: Restrict)
+  requesterId                String
+  requester                  Admin                     @relation("RecoveryRequester", fields: [requesterId], references: [id], onDelete: Restrict)
+  approverId                 String?
+  approver                   Admin?                    @relation("RecoveryApprover", fields: [approverId], references: [id], onDelete: Restrict)
+  reasonCode                 String
+  reasonComment              String?
+  commandPayload             Json
+  payloadHash                String
+  targetVersionSnapshot      Int
+  targetTokenVersionSnapshot Int
+  targetMfaVersionSnapshot   Int
+  roleScopeSnapshotHash      String
+  state                      StaffRecoveryRequestState @default(pending)
+  expiresAt                  DateTime
+  approvedAt                 DateTime?
+  executedAt                 DateTime?
+  executionIdempotencyKey    String                    @unique
+  createdAt                  DateTime                  @default(now())
+
+  @@index([targetStaffId, state, expiresAt])
+  @@index([requesterId, createdAt])
+}
+
+model AuthThrottleBucket {
+  keyHash             String           @id
+  kind                AuthThrottleKind
+  windowStartedAt     DateTime
+  windowCount         Int              @default(0)
+  consecutiveFailures Int              @default(0)
+  cooldownUntil       DateTime?
+  updatedAt           DateTime         @updatedAt
+
+  @@index([kind, cooldownUntil])
+}
+
+model StaffMutationRequest {
+  id                 String   @id @default(cuid())
+  actorId            String
+  action             String
+  idempotencyKeyHash String
+  payloadHash        String
+  resourceId         String?
+  responseJson       Json
+  createdAt          DateTime @default(now())
+  expiresAt          DateTime
+
+  @@unique([actorId, action, idempotencyKeyHash])
+  @@index([expiresAt])
+}
+
+model IdentityKeyRotation {
+  id               String                   @id
+  purpose          String
+  targetKeyId      String
+  state            IdentityKeyRotationState @default(running)
+  lastCredentialId String?
+  processedCount   Int                      @default(0)
+  version          Int                      @default(1)
+  startedAt        DateTime                 @default(now())
+  updatedAt        DateTime                 @updatedAt
+  completedAt      DateTime?
+
+  @@index([purpose, state])
+}
+
+model IdentityKeyCompromise {
+  id                String                     @id
+  purpose           String
+  keyId             String
+  state             IdentityKeyCompromiseState @default(handling)
+  affectedAccounts  Int                        @default(0)
+  affectedArtifacts Int                        @default(0)
+  version           Int                        @default(1)
+  startedAt         DateTime                   @default(now())
+  updatedAt         DateTime                   @updatedAt
+  completedAt       DateTime?
+
+  @@unique([purpose, keyId])
+  @@index([purpose, state])
+}
+
+model IdentityArtifactReissue {
+  id               String                       @id @default(cuid())
+  compromiseId     String
+  staffUserId      String
+  purpose          StaffInvitationPurpose
+  requestedById    String
+  sourceArtifactId String                       @unique
+  state            IdentityArtifactReissueState @default(pending)
+  replacementId    String?
+  attemptCount     Int                          @default(0)
+  lastErrorCode    String?
+  createdAt        DateTime                     @default(now())
+  updatedAt        DateTime                     @updatedAt
+  completedAt      DateTime?
+
+  @@index([compromiseId, state])
+}
+
+/// Opaque, one-use authorization preparation for one exact privileged mutation.
+/// The selector is public; tokenDigest is keyed and the raw secret is never stored.
+model ActionIntent {
+  id                      String                 @id
+  tokenDigest             String
+  digestKeyId             String
+  intentVersion           Int                    @default(1)
+  canonicalizationVersion Int                    @default(1)
+  hashAlgorithm           String                 @default("sha-256")
+  hashDomain              String                 @default("identity/action-intent")
+  hashVersion             Int                    @default(1)
+  semanticEnvelope        Json
+  actionHash              String
+  subjectId               String
+  subjectTokenVersion     Int
+  subjectMfaVersion       Int
+  sessionId               String
+  action                  String
+  resourceType            String
+  resourceId              String
+  resourceVersion         Int
+  payloadHash             String?
+  targetSetHash           String?
+  policyHash              String?
+  policyVersion           Int?
+  approvalEvidenceSetHash String?
+  decisionValue           ApprovalDecisionValue?
+  executionId             String?
+  reasonCode              String?
+  serverCorrelationId     String
+  nonce                   String
+  issuedAt                DateTime               @default(now())
+  expiresAt               DateTime
+  consumedAt              DateTime?
+  revokedAt               DateTime?
+  revokeReasonCode        String?
+
+  @@index([subjectId, sessionId, expiresAt])
+  @@index([action, resourceType, resourceId])
+  @@index([expiresAt, consumedAt, revokedAt])
+}
+
+/// Never-expiring tombstone for a privileged idempotency namespace. Reuse after
+/// time is deliberately forbidden until an approved retention policy exists.
+model GovernanceIdempotencyRecord {
+  id                      String    @id @default(cuid())
+  actorId                 String
+  actionType              String
+  idempotencyKeyHash      String
+  keyId                   String
+  hashAlgorithm           String    @default("hmac-sha-256")
+  hashDomain              String    @default("idempotency")
+  hashVersion             Int       @default(1)
+  canonicalizationVersion Int       @default(1)
+  requestHash             String
+  resourceId              String?
+  responseJson            Json
+  createdAt               DateTime  @default(now())
+  retainUntil             DateTime?
+
+  @@unique([actorId, actionType, idempotencyKeyHash])
+  @@index([createdAt])
+}
+
+model ApprovalPolicyProposal {
+  id                      String                         @id @default(cuid())
+  policyKey               String
+  proposedPolicyVersion   Int
+  actionType              String
+  actionSchemaVersionMin  Int
+  actionSchemaVersionMax  Int
+  mode                    ApprovalPolicyMode
+  /// Control-plane review quorum captured from verified bootstrap evidence.
+  /// The public proposal payload cannot choose this value.
+  requiredReviewCount     Int
+  requiredApproverCount   Int
+  semanticPolicy          Json
+  policyHash              String
+  canonicalizationVersion Int                            @default(1)
+  hashAlgorithm           String                         @default("sha-256")
+  hashDomain              String                         @default("approval/policy")
+  hashVersion             Int                            @default(1)
+  d05EvidenceDescriptors  Json
+  approvalEvidenceSetHash String
+  reviewEvidenceSetHash   String?
+  proposerId              String
+  proposerTokenVersion    Int
+  proposerMfaVersion      Int
+  proposerSessionId       String
+  serverCorrelationId     String
+  state                   ApprovalPolicyProposalState    @default(proposed)
+  version                 Int                            @default(1)
+  createdAt               DateTime                       @default(now())
+  updatedAt               DateTime                       @updatedAt
+  decidedAt               DateTime?
+  reviews                 ApprovalPolicyReviewDecision[]
+  policy                  ApprovalPolicy?
+  activations             ApprovalPolicyActivation[]
+
+  @@unique([policyKey, proposedPolicyVersion])
+  @@index([state, createdAt])
+  @@index([actionType, actionSchemaVersionMin, actionSchemaVersionMax])
+}
+
+/// Admission evidence is written only by a future reviewed D-05 verifier. This
+/// increment seeds no rows, so activation remains unavailable by default.
+model ApprovalBootstrapEvidenceAdmission {
+  id                       String    @id
+  approvalEvidenceSetHash  String    @unique
+  verifierControlReference String
+  verifiedAt               DateTime
+  expiresAt                DateTime?
+  revokedAt                DateTime?
+}
+
+/// Append-only review fact. Authorization epochs prevent a revoked decision from
+/// silently resurrecting after later role/scope regrant.
+model ApprovalPolicyReviewDecision {
+  id                     String                 @id @default(cuid())
+  proposalId             String
+  proposal               ApprovalPolicyProposal @relation(fields: [proposalId], references: [id], onDelete: Restrict)
+  reviewerId             String
+  reviewerTokenVersion   Int
+  reviewerMfaVersion     Int
+  reviewerAccountVersion Int
+  reviewerSessionId      String
+  value                  ApprovalReviewValue
+  policyHash             String
+  evidenceHash           String
+  authorizationSnapshot  Json
+  actionHash             String
+  actionIntentId         String                 @unique
+  serverCorrelationId    String
+  createdAt              DateTime               @default(now())
+
+  @@unique([proposalId, reviewerId])
+  @@index([proposalId, value, createdAt])
+}
+
+/// Immutable semantic policy materialized from an approved proposal. Activation
+/// and retirement are separate append-only facts plus one mutable active slot.
+model ApprovalPolicy {
+  id                      String                     @id @default(cuid())
+  proposalId              String                     @unique
+  proposal                ApprovalPolicyProposal     @relation(fields: [proposalId], references: [id], onDelete: Restrict)
+  policyKey               String
+  policyVersion           Int
+  actionType              String
+  actionSchemaVersionMin  Int
+  actionSchemaVersionMax  Int
+  mode                    ApprovalPolicyMode
+  requiredApproverCount   Int
+  semanticPolicy          Json
+  policyHash              String
+  canonicalizationVersion Int                        @default(1)
+  hashAlgorithm           String                     @default("sha-256")
+  hashDomain              String                     @default("approval/policy")
+  hashVersion             Int                        @default(1)
+  approvalEvidenceSetHash String
+  createdAt               DateTime                   @default(now())
+  activations             ApprovalPolicyActivation[]
+  activeSlot              ApprovalPolicyActiveSlot?
+  requests                ApprovalRequest[]
+
+  @@unique([policyKey, policyVersion])
+  @@index([actionType, actionSchemaVersionMin, actionSchemaVersionMax])
+}
+
+/// Append-only activation/retirement evidence.
+model ApprovalPolicyActivation {
+  id                      String                       @id @default(cuid())
+  proposalId              String
+  proposal                ApprovalPolicyProposal       @relation(fields: [proposalId], references: [id], onDelete: Restrict)
+  policyId                String
+  policy                  ApprovalPolicy               @relation(fields: [policyId], references: [id], onDelete: Restrict)
+  kind                    ApprovalPolicyActivationKind
+  actorId                 String
+  actorTokenVersion       Int
+  actorMfaVersion         Int
+  actorSessionId          String
+  policyHash              String
+  approvalEvidenceSetHash String
+  actionHash              String
+  actionIntentId          String                       @unique
+  reasonCode              String?
+  serverCorrelationId     String
+  createdAt               DateTime                     @default(now())
+
+  @@unique([policyId, kind])
+  @@index([proposalId, createdAt])
+}
+
+/// Exactly one row per active action/schema coverage; the migration creates none.
+model ApprovalPolicyActiveSlot {
+  policyKey              String
+  actionType             String
+  actionSchemaVersionMin Int
+  actionSchemaVersionMax Int
+  policyId               String         @unique
+  policy                 ApprovalPolicy @relation(fields: [policyId], references: [id], onDelete: Restrict)
+  version                Int            @default(1)
+  activatedAt            DateTime       @default(now())
+
+  @@id([policyKey, actionType, actionSchemaVersionMin, actionSchemaVersionMax])
+}
+
+model ApprovalRequest {
+  id                      String               @id @default(cuid())
+  actionType              String
+  schemaVersion           Int
+  normalizationVersion    Int
+  adapterVersion          Int
+  semanticCommand         Json
+  payloadHash             String
+  targetSetHash           String
+  canonicalizationVersion Int                  @default(1)
+  hashAlgorithm           String               @default("sha-256")
+  hashVersion             Int                  @default(1)
+  policyId                String
+  policy                  ApprovalPolicy       @relation(fields: [policyId], references: [id], onDelete: Restrict)
+  policyHash              String
+  policyVersion           Int
+  requiredApproverCount   Int
+  requesterId             String
+  requesterTokenVersion   Int
+  requesterMfaVersion     Int
+  requesterAccountVersion Int
+  requesterSessionId      String
+  idempotencyKeyHash      String
+  idempotencyKeyId        String
+  serverCorrelationId     String
+  state                   ApprovalRequestState @default(pending)
+  version                 Int                  @default(1)
+  expiresAt               DateTime
+  supersedesRequestId     String?
+  createdAt               DateTime             @default(now())
+  updatedAt               DateTime             @updatedAt
+  terminalAt              DateTime?
+  staleReasonCode         String?
+  decisions               ApprovalDecision[]
+  execution               ApprovalExecution?
+
+  @@unique([requesterId, actionType, idempotencyKeyHash])
+  @@index([state, expiresAt])
+  @@index([actionType, createdAt])
+  @@index([policyId, state])
+}
+
+/// Append-only actor decision. One actor can never submit a changed second vote.
+model ApprovalDecision {
+  id                    String                @id @default(cuid())
+  requestId             String
+  request               ApprovalRequest       @relation(fields: [requestId], references: [id], onDelete: Restrict)
+  actorId               String
+  actorTokenVersion     Int
+  actorMfaVersion       Int
+  actorAccountVersion   Int
+  actorSessionId        String
+  value                 ApprovalDecisionValue
+  authorizationSnapshot Json
+  policyHash            String
+  payloadHash           String
+  targetSetHash         String
+  actionHash            String
+  actionIntentId        String                @unique
+  serverCorrelationId   String
+  createdAt             DateTime              @default(now())
+
+  @@unique([requestId, actorId])
+  @@index([requestId, value, createdAt])
+}
+
+/// This increment records authorization only. No adapter or external/domain side
+/// effect is called by Governance.
+model ApprovalExecution {
+  id                      String                 @id @default(cuid())
+  requestId               String                 @unique
+  request                 ApprovalRequest        @relation(fields: [requestId], references: [id], onDelete: Restrict)
+  state                   ApprovalExecutionState @default(authorized)
+  actorId                 String
+  actorTokenVersion       Int
+  actorMfaVersion         Int
+  actorAccountVersion     Int
+  actorSessionId          String
+  approvalEvidenceSetHash String
+  policyHash              String
+  payloadHash             String
+  targetSetHash           String
+  actionHash              String
+  actionIntentId          String                 @unique
+  serverCorrelationId     String
+  createdAt               DateTime               @default(now())
+}
+
+model SecurityControl {
+  id                              Int       @id @default(1)
+  /// Monotonic epoch used by authorization-bound cursors and sessions.
+  version                         Int       @default(1)
+  minimumAuthContractVersion      Int       @default(1)
+  sessionsEnforcedAt              DateTime?
+  legacyJwtRevokedAt              DateTime?
+  identityCanonicalizationVersion Int       @default(0)
+  identityCanonicalizedAt         DateTime?
+  identityCanonicalizationDigest  String?
+  updatedAt                       DateTime  @updatedAt
+  updatedById                     String?
+  updatedBy                       Admin?    @relation("SecurityControlUpdater", fields: [updatedById], references: [id], onDelete: SetNull)
+}
+
+/// A staff role is a named bundle of granular permissions. Admin.role remains
+/// during the compatibility window; new authorization uses this relation.
+model Role {
+  id          String                @id @default(cuid())
+  /// Monotonic semantic version; permission-edge changes are also represented
+  /// directly in the complete authorization graph digest.
+  version     Int                   @default(1)
+  key         String                @unique
+  name        String
+  description String?
+  isSystem    Boolean               @default(false)
+  createdAt   DateTime              @default(now())
+  updatedAt   DateTime              @updatedAt
+  assignments AdminRoleAssignment[]
+  permissions RolePermission[]
+}
+
+model Permission {
+  id          String           @id @default(cuid())
+  key         String           @unique
+  description String?
+  roles       RolePermission[]
+}
+
+model RolePermission {
+  roleId       String
+  permissionId String
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+  @@index([permissionId])
+}
+
+/// Roles are reusable permission bundles; scope belongs to the staff-to-role
+/// assignment so one staff account can hold multiple independently scoped roles.
+model AdminRoleAssignment {
+  id        String              @id @default(cuid())
+  adminId   String
+  roleId    String
+  scopeType PermissionScopeType @default(global)
+  /// Empty string is canonical global scope; non-global assignments require an id.
+  scopeId   String              @default("")
+  createdAt DateTime            @default(now())
+  admin     Admin               @relation(fields: [adminId], references: [id], onDelete: Cascade)
+  role      Role                @relation(fields: [roleId], references: [id], onDelete: Restrict)
+
+  @@unique([adminId, roleId, scopeType, scopeId])
+  @@index([roleId])
+  @@index([scopeType, scopeId])
+}
+
+/// Append-only security/operations record. A database trigger installed by the
+/// migration rejects UPDATE and DELETE even for accidental Prisma calls.
+model AuditEvent {
+  id            String   @id @default(cuid())
+  occurredAt    DateTime @default(now())
+  actorId       String?
+  actorEmail    String?
+  action        String
+  entityType    String
+  entityId      String?
+  before        Json?
+  after         Json?
+  reason        String?
+  correlationId String
+  ipAddress     String?
+  userAgent     String?
+  source        String   @default("admin_api")
+  metadata      Json?
+
+  @@index([occurredAt])
+  @@index([actorId, occurredAt])
+  @@index([entityType, entityId, occurredAt])
+  @@index([correlationId])
+}
+
+/// Immutable registry row for one AuditEventV2 wire/schema version. Registry
+/// definitions are append-only so later code cannot reclassify historical data.
+model AuditEventSchemaV2 {
+  eventType                  String
+  schemaVersion              Int
+  ownerDomain                String
+  actorTypes                 String[]
+  subjectTypes               String[]
+  actions                    String[]
+  entityTypes                String[]
+  outcomes                   String[]
+  sources                    String[]
+  registryDigestVersion      Int                          @default(1)
+  registryDigest             String
+  authorizationScopeKind     String
+  scopeMatchMode             String
+  requiredGlobalGrant        String?
+  allowGlobalReader          Boolean                      @default(false)
+  allowedScopeDimensions     String[]
+  scopeResolverId            String
+  scopeResolverVersion       Int
+  authorizationPolicyVersion Int
+  retentionClass             String
+  fieldSchema                Json
+  maxProjectionBytes         Int
+  createdAt                  DateTime                     @default(now())
+  events                     AuditEventV2[]
+  publishedReaderSchemas     AuditReaderPublishedSchema[]
+
+  @@id([eventType, schemaVersion])
+  @@unique([eventType, schemaVersion, registryDigest])
+}
+
+/// Increment 3B append-only audit evidence. V1 AuditEvent rows remain
+/// untouched and are deliberately absent from the ordinary reader relation.
+model AuditEventV2 {
+  id                         String                  @id @default(cuid())
+  eventType                  String
+  schemaVersion              Int
+  registryDigestVersion      Int                     @default(1)
+  registryDigest             String
+  occurredAt                 DateTime                @default(now())
+  actorId                    String
+  actorType                  String
+  sessionId                  String?
+  subjectType                String
+  subjectId                  String?
+  action                     String
+  entityType                 String
+  entityId                   String?
+  entityVersion              String?
+  authorizationScopeKind     String
+  scopeMatchMode             String
+  requiredGlobalGrant        String?
+  scopeResolverId            String
+  scopeResolverVersion       Int
+  authorizationPolicyVersion Int
+  resourceOwnerSnapshot      Json?
+  outcome                    String
+  reasonCode                 String?
+  safeBefore                 Json?
+  safeAfter                  Json?
+  safeMetadata               Json?
+  approvalRequestId          String?
+  approvalExecutionId        String?
+  bulkOperationId            String?
+  bulkItemId                 String?
+  serverCorrelationId        String
+  causationId                String?
+  clientRequestId            String?
+  source                     String
+  retentionClass             String
+  createdAt                  DateTime                @default(now())
+  schema                     AuditEventSchemaV2      @relation(fields: [eventType, schemaVersion, registryDigest], references: [eventType, schemaVersion, registryDigest], onDelete: Restrict)
+  scopeRefs                  AuditEventScopeRefV2[]
+  backgroundJobs             BackgroundJob[]
+  consumerReceiptResults     ConsumerReceiptResult[]
+  deadLetterAdmissions       DeadLetterAdmission[]
+  dispatchFacts              DispatchFact[]
+  jobAttemptOutcomes         JobAttemptOutcome[]
+  jobAttemptStarts           JobAttemptStarted[]
+  jobAuditLinks              JobAuditLink[]
+  jobFenceLossAudits         JobFenceLossAudit[]
+  jobHeartbeatFacts          JobHeartbeatFact[]
+  jobReconciliations         JobReconciliation[]
+  outboxConsumerReceipts     OutboxConsumerReceipt[]
+  outboxAcknowledgements     OutboxAcknowledgement[]
+  outboxMessages             OutboxMessage[]
+
+  @@index([occurredAt, id])
+  @@index([eventType, occurredAt, id])
+  @@index([outcome, occurredAt, id])
+  @@index([actorId, occurredAt, id])
+  @@index([entityType, entityId, occurredAt, id])
+  @@index([approvalRequestId, occurredAt, id])
+  @@index([approvalExecutionId, occurredAt, id])
+  @@index([bulkOperationId, bulkItemId, occurredAt, id])
+  @@index([serverCorrelationId, occurredAt, id])
+  @@index([causationId, occurredAt, id])
+  @@index([source, occurredAt, id])
+  @@index([retentionClass, occurredAt, id])
+}
+
+/// Canonical event-time scope tuples. They are normalized/indexed rather than
+/// stored in free-form JSON and share the event's append-only lifecycle.
+model AuditEventScopeRefV2 {
+  eventId   String
+  dimension String
+  scopeId   String
+  ordinal   Int
+  event     AuditEventV2 @relation(fields: [eventId], references: [id], onDelete: Restrict)
+
+  @@id([eventId, dimension, scopeId])
+  @@unique([eventId, ordinal])
+  @@index([dimension, scopeId, eventId])
+}
+
+/// Owner-provisioned runtime binding control. The application only consumes
+/// this through restricted database functions; rows are append-only.
+model AuditRuntimeContextKey {
+  keyId                String                            @id
+  keyMaterial          Bytes
+  notBefore            DateTime                          @db.Timestamptz(6)
+  expiresAt            DateTime                          @db.Timestamptz(6)
+  maxContextTtlSeconds Int
+  maxPageSize          Int
+  maxTimeRangeSeconds  Int
+  maxFilters           Int
+  readerPolicyVersion  Int
+  queryPlanPolicyId    String
+  createdAt            DateTime                          @default(now()) @db.Timestamptz(6)
+  revocation           AuditRuntimeContextKeyRevocation?
+}
+
+model AuditRuntimeContextKeyRevocation {
+  keyId      String                 @id
+  revokedAt  DateTime               @default(now()) @db.Timestamptz(6)
+  reasonCode String
+  key        AuditRuntimeContextKey @relation(fields: [keyId], references: [keyId], onDelete: Restrict, onUpdate: Restrict, map: "AuditRuntimeContextKeyRevocation_key_fkey")
+}
+
+model AuditReaderPublishedSchema {
+  eventType      String
+  schemaVersion  Int
+  registryDigest String
+  publishedAt    DateTime           @default(now()) @db.Timestamptz(6)
+  schema         AuditEventSchemaV2 @relation(fields: [eventType, schemaVersion, registryDigest], references: [eventType, schemaVersion, registryDigest], onDelete: Restrict, onUpdate: Restrict, map: "AuditReaderPublishedSchema_registry_fkey")
+
+  @@id([eventType, schemaVersion, registryDigest])
+}
+
+/// Immutable, versioned safe decoder/capability definition. Increment 3C
+/// migrates this table empty and compiles zero application handlers.
+model JobTypeRegistry {
+  jobType                    String
+  schemaVersion              Int
+  registryDigestVersion      Int             @default(1)
+  registryDigest             String
+  operationalPolicyDigest    String?
+  partitionKey               String?
+  ownerDomain                String
+  producerId                 String
+  producerAction             String?
+  consumerId                 String?
+  published                  Boolean         @default(false)
+  enqueueEnabled             Boolean         @default(false)
+  handlerEnabled             Boolean         @default(false)
+  externalEffectCapable      Boolean         @default(false)
+  safeFieldSchema            Json
+  authorizationScopeKind     String
+  scopeMatchMode             String
+  requiredGlobalGrant        String?
+  allowGlobalReader          Boolean         @default(false)
+  allowAnyResourceScope      Boolean         @default(false)
+  allowedScopeDimensions     String[]
+  requiredScopeKinds         String[]
+  minScopeRefCount           Int?
+  maxScopeRefCount           Int?
+  allowedChildJobTypes       String[]
+  allowedChildOwnerDomains   String[]
+  scopeResolverId            String
+  scopeResolverVersion       Int
+  authorizationPolicyVersion Int
+  maxPayloadBytes            Int
+  maxChildFanout             Int
+  maxDepth                   Int
+  maxOriginRows              Int
+  maxTransactionRows         Int
+  maxDerivedBytes            Int
+  maxAuditFacts              Int
+  leaseSeconds               Int
+  maxAttempts                Int
+  reclaimable                Boolean         @default(false)
+  createdAt                  DateTime        @default(dbgenerated("clock_timestamp()")) @db.Timestamptz(6)
+  jobs                       BackgroundJob[]
+  messages                   OutboxMessage[]
+
+  @@id([jobType, schemaVersion])
+  @@unique([jobType, schemaVersion, registryDigest], map: "JobTypeRegistry_digest_key")
+}
+
+model OutboxMessage {
+  id                         String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  jobType                    String
+  schemaVersion              Int
+  registryDigest             String
+  ownerDomain                String
+  producerId                 String
+  consumerId                 String?
+  inputDigest                String
+  safePayload                Json
+  idempotencyNamespace       String
+  deduplicationKey           String
+  originJobId                String                  @db.Uuid
+  parentJobId                String?                 @db.Uuid
+  depth                      Int
+  ancestryDigest             String
+  aggregateType              String?
+  aggregateId                String?
+  aggregateSequence          BigInt?
+  authorizationScopeKind     String
+  scopeMatchMode             String
+  requiredGlobalGrant        String?
+  scopeResolverId            String
+  scopeResolverVersion       Int
+  authorizationPolicyVersion Int
+  serverCorrelationId        String
+  causationId                String?
+  clientRequestId            String?
+  originatingAuditEventId    String
+  createdAt                  DateTime                @default(dbgenerated("clock_timestamp()")) @db.Timestamptz(6)
+  job                        BackgroundJob?
+  receipts                   OutboxConsumerReceipt[]
+  acknowledgement            OutboxAcknowledgement?
+  audit                      AuditEventV2            @relation(fields: [originatingAuditEventId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "OutboxMessage_audit_fkey")
+  registry                   JobTypeRegistry         @relation(fields: [jobType, schemaVersion, registryDigest], references: [jobType, schemaVersion, registryDigest], onDelete: Restrict, onUpdate: NoAction, map: "OutboxMessage_registry_fkey")
+
+  @@unique([idempotencyNamespace, deduplicationKey], map: "OutboxMessage_dedup_key")
+  @@index([jobType, aggregateType, aggregateId, aggregateSequence], map: "OutboxMessage_aggregate_idx")
+  @@index([serverCorrelationId, createdAt, id], map: "OutboxMessage_correlation_idx")
+}
+
+model BackgroundJob {
+  id                         String                     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  outboxMessageId            String                     @unique @db.Uuid
+  jobType                    String
+  schemaVersion              Int
+  registryDigest             String
+  ownerDomain                String
+  safeSummary                Json
+  inputDigest                String
+  originJobId                String                     @db.Uuid
+  parentJobId                String?                    @db.Uuid
+  depth                      Int
+  ancestryDigest             String
+  authorizationScopeKind     String
+  scopeMatchMode             String
+  requiredGlobalGrant        String?
+  scopeResolverId            String
+  scopeResolverVersion       Int
+  authorizationPolicyVersion Int
+  state                      String                     @default("queued")
+  priority                   Int
+  availableAt                DateTime                   @db.Timestamptz(6)
+  leaseGeneration            Int                        @default(0)
+  leaseSecretDigest          Bytes?
+  leaseDigestKeyId           String?
+  leaseExpiresAt             DateTime?                  @db.Timestamptz(6)
+  serverCorrelationId        String
+  causationId                String?
+  originatingAuditEventId    String
+  createdAt                  DateTime                   @default(dbgenerated("clock_timestamp()")) @db.Timestamptz(6)
+  audit                      AuditEventV2               @relation(fields: [originatingAuditEventId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "BackgroundJob_audit_fkey")
+  outbox                     OutboxMessage              @relation(fields: [outboxMessageId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "BackgroundJob_outbox_fkey")
+  registry                   JobTypeRegistry            @relation(fields: [jobType, schemaVersion, registryDigest], references: [jobType, schemaVersion, registryDigest], onDelete: Restrict, onUpdate: NoAction, map: "BackgroundJob_registry_fkey")
+  deadLetter                 DeadLetterAdmission?
+  attempts                   JobAttemptStarted[]
+  auditLinks                 JobAuditLink[]
+  scopeRefs                  JobAuthorizationScopeRef[]
+  reconciliations            JobReconciliation[]
+
+  @@index([causationId, createdAt, id], map: "BackgroundJob_causation_idx")
+  @@index([state, priority(sort: Desc), availableAt, id], map: "BackgroundJob_claim_idx")
+  @@index([serverCorrelationId, createdAt, id], map: "BackgroundJob_correlation_idx")
+  @@index([state, leaseExpiresAt, leaseGeneration], map: "BackgroundJob_lease_idx")
+  @@index([originJobId, parentJobId, depth], map: "BackgroundJob_origin_idx")
+  @@index([ownerDomain, createdAt, id], map: "BackgroundJob_owner_idx")
+}
+
+model JobAuthorizationScopeRef {
+  jobId     String        @db.Uuid
+  dimension String
+  scopeId   String
+  ordinal   Int
+  job       BackgroundJob @relation(fields: [jobId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+
+  @@id([jobId, dimension, scopeId])
+  @@unique([jobId, ordinal])
+  @@index([dimension, scopeId, jobId], map: "JobAuthorizationScopeRef_lookup_idx")
+}
+
+model JobOriginBudget {
+  originJobId                 String  @id @db.Uuid
+  rowCount                    Int
+  derivedBytes                Int
+  auditFactCount              Int
+  rootJobType                 String?
+  rootRegistryDigest          String?
+  maxRows                     Int?
+  maxDerivedBytes             Int?
+  maxFacts                    Int?
+  maxAudits                   Int?
+  maxAttemptsPerJob           Int?
+  maxHeartbeatsPerJob         Int?
+  maxReconciliationsPerJob    Int?
+  maxFenceLossPerMinute       Int?
+  maxAttemptsPerMinute        Int?
+  maxHeartbeatsPerMinute      Int?
+  maxReconciliationsPerMinute Int?
+  maxFactsPerMinute           Int?
+  maxAuditsPerMinute          Int?
+  factCount                   Int     @default(0)
+  attemptCount                Int     @default(0)
+  heartbeatCount              Int     @default(0)
+  reconciliationCount         Int     @default(0)
+  fenceLossCount              Int     @default(0)
+}
+
+model JobTransactionBudget {
+  transactionId BigInt
+  originJobId   String @db.Uuid
+  rowCount      Int
+
+  @@id([transactionId, originJobId])
+}
+
+model JobAttemptStarted {
+  id                      String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  jobId                   String                  @db.Uuid
+  leaseGeneration         Int
+  reclaimed               Boolean
+  serverCorrelationId     String
+  causationId             String?
+  originatingAuditEventId String
+  startedAt               DateTime                @default(dbgenerated("clock_timestamp()")) @db.Timestamptz(6)
+  job                     BackgroundJob           @relation(fields: [jobId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  audit                   AuditEventV2            @relation(fields: [originatingAuditEventId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  outcome                 JobAttemptOutcome?
+  heartbeats              JobHeartbeatFact[]
+  receipt                 OutboxConsumerReceipt?
+  dispatchFacts           DispatchFact[]
+  deadLetterAdmissions    DeadLetterAdmission[]
+  fenceLossAudits         JobFenceLossAudit[]
+  outboxAcknowledgements  OutboxAcknowledgement[]
+
+  @@unique([jobId, leaseGeneration])
+}
+
+model JobHeartbeatFact {
+  id                      String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  attemptStartedId        String            @db.Uuid
+  leaseGeneration         Int
+  previousLeaseExpiresAt  DateTime          @db.Timestamptz(6)
+  leaseExpiresAt          DateTime          @db.Timestamptz(6)
+  originatingAuditEventId String
+  createdAt               DateTime          @default(dbgenerated("clock_timestamp()")) @db.Timestamptz(6)
+  attempt                 JobAttemptStarted @relation(fields: [attemptStartedId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  audit                   AuditEventV2      @relation(fields: [originatingAuditEventId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+}
+
+model JobAttemptOutcome {
+  id                      String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  attemptStartedId        String            @unique @db.Uuid
+  terminalKind            String
+  safeReasonCode          String?
+  originatingAuditEventId String
+  occurredAt              DateTime          @default(dbgenerated("clock_timestamp()")) @db.Timestamptz(6)
+  attempt                 JobAttemptStarted @relation(fields: [attemptStartedId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  audit                   AuditEventV2      @relation(fields: [originatingAuditEventId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+}
+
+model OutboxConsumerReceipt {
+  id                      String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  consumerId              String
+  messageId               String                 @db.Uuid
+  inputDigest             String
+  attemptStartedId        String                 @unique @db.Uuid
+  leaseGeneration         Int
+  handlerId               String
+  schemaVersion           Int
+  idempotencyNamespace    String
+  originatingAuditEventId String
+  createdAt               DateTime               @default(dbgenerated("clock_timestamp()")) @db.Timestamptz(6)
+  result                  ConsumerReceiptResult?
+  attempt                 JobAttemptStarted      @relation(fields: [attemptStartedId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  message                 OutboxMessage          @relation(fields: [messageId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  audit                   AuditEventV2           @relation(fields: [originatingAuditEventId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+
+  @@unique([consumerId, messageId])
+}
+
+model ConsumerReceiptResult {
+  id                      String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  receiptId               String                @unique @db.Uuid
+  terminalKind            String
+  safeResult              Json?
+  originatingAuditEventId String
+  createdAt               DateTime              @default(dbgenerated("clock_timestamp()")) @db.Timestamptz(6)
+  audit                   AuditEventV2          @relation(fields: [originatingAuditEventId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  receipt                 OutboxConsumerReceipt @relation(fields: [receiptId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+}
+
+model OutboxAcknowledgement {
+  id                      String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  messageId               String            @unique @db.Uuid
+  attemptStartedId        String            @db.Uuid
+  terminalKind            String
+  originatingAuditEventId String
+  createdAt               DateTime          @default(dbgenerated("clock_timestamp()")) @db.Timestamptz(6)
+  message                 OutboxMessage     @relation(fields: [messageId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  attempt                 JobAttemptStarted @relation(fields: [attemptStartedId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  audit                   AuditEventV2      @relation(fields: [originatingAuditEventId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+}
+
+model DispatchFact {
+  id                      String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  attemptStartedId        String            @db.Uuid
+  kind                    String
+  sequence                Int
+  originatingAuditEventId String
+  createdAt               DateTime          @default(dbgenerated("clock_timestamp()")) @db.Timestamptz(6)
+  attempt                 JobAttemptStarted @relation(fields: [attemptStartedId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  audit                   AuditEventV2      @relation(fields: [originatingAuditEventId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+
+  @@unique([attemptStartedId, sequence])
+}
+
+model DeadLetterAdmission {
+  id                      String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  jobId                   String            @unique @db.Uuid
+  attemptStartedId        String            @db.Uuid
+  safeReasonCode          String
+  originatingAuditEventId String
+  createdAt               DateTime          @default(dbgenerated("clock_timestamp()")) @db.Timestamptz(6)
+  attempt                 JobAttemptStarted @relation(fields: [attemptStartedId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  job                     BackgroundJob     @relation(fields: [jobId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  audit                   AuditEventV2      @relation(fields: [originatingAuditEventId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+
+  @@index([createdAt, jobId], map: "DeadLetterAdmission_created_idx")
+}
+
+model JobReconciliation {
+  id                      String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  jobId                   String        @db.Uuid
+  state                   String
+  safeReasonCode          String
+  originatingAuditEventId String
+  createdAt               DateTime      @default(dbgenerated("clock_timestamp()")) @db.Timestamptz(6)
+  job                     BackgroundJob @relation(fields: [jobId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  audit                   AuditEventV2  @relation(fields: [originatingAuditEventId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+
+  @@index([state, createdAt, jobId], map: "JobReconciliation_state_idx")
+}
+
+model JobAuditLink {
+  jobId        String        @db.Uuid
+  auditEventId String        @unique
+  operation    String
+  createdAt    DateTime      @default(dbgenerated("clock_timestamp()")) @db.Timestamptz(6)
+  audit        AuditEventV2  @relation(fields: [auditEventId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  job          BackgroundJob @relation(fields: [jobId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+
+  @@id([jobId, auditEventId])
+}
+
+model JobFenceLossAudit {
+  attemptStartedId String            @db.Uuid
+  leaseGeneration  Int
+  operation        String
+  auditEventId     String            @unique
+  createdAt        DateTime          @default(dbgenerated("clock_timestamp()")) @db.Timestamptz(6)
+  runtimeLogin     String?
+  attempt          JobAttemptStarted @relation(fields: [attemptStartedId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  audit            AuditEventV2      @relation(fields: [auditEventId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+
+  @@id([attemptStartedId, leaseGeneration, operation])
+}
+
+model JobLeaseDigestKey {
+  keyId       String                       @id
+  keyMaterial Bytes
+  notBefore   DateTime                     @db.Timestamptz(6)
+  expiresAt   DateTime                     @db.Timestamptz(6)
+  createdAt   DateTime                     @default(dbgenerated("clock_timestamp()")) @db.Timestamptz(6)
+  revocation  JobLeaseDigestKeyRevocation?
+}
+
+model JobLeaseDigestKeyRevocation {
+  keyId      String            @id
+  revokedAt  DateTime          @default(dbgenerated("clock_timestamp()")) @db.Timestamptz(6)
+  reasonCode String
+  key        JobLeaseDigestKey @relation(fields: [keyId], references: [keyId], onDelete: Restrict, onUpdate: NoAction)
+}
+
+model JobRuntimeContextKey {
+  keyId                   String                          @id
+  purpose                 String                          @unique
+  keyMaterial             Bytes
+  notBefore               DateTime                        @db.Timestamptz(6)
+  expiresAt               DateTime                        @db.Timestamptz(6)
+  maxContextTtlSeconds    Int
+  runtimeContractDigest   String
+  registryDigest          String
+  operationalPolicyDigest String
+  runtimeLogin            String?
+  principalId             String?
+  boundaryDigest          String?
+  createdAt               DateTime                        @default(dbgenerated("clock_timestamp()")) @db.Timestamptz(6)
+  revocation              JobRuntimeContextKeyRevocation?
+}
+
+model JobOperationalPolicy {
+  operationalPolicyDigest     String   @id
+  maxAttemptsPerJob           Int
+  maxHeartbeatsPerJob         Int
+  maxReconciliationsPerJob    Int
+  maxFenceLossPerMinute       Int
+  maxAttemptsPerMinute        Int
+  maxHeartbeatsPerMinute      Int
+  maxReconciliationsPerMinute Int
+  maxFactsPerMinute           Int
+  maxAuditsPerMinute          Int
+  maxFactsPerOrigin           Int
+  maxAuditsPerOrigin          Int
+  policyDocument              Json?
+  queueCapacity               Int?
+  partitionCapacity           Int?
+  topicCapacity               Int?
+  rootCapacity                Int?
+  enqueueRatePerMinute        Int?
+  claimRatePerMinute          Int?
+  maxActiveLeases             Int?
+  circuitFailureThreshold     Int?
+  circuitOpenSeconds          Int?
+  createdAt                   DateTime @default(dbgenerated("clock_timestamp()")) @db.Timestamptz(6)
+}
+
+model JobCapacityReservation {
+  jobId                   String    @id @db.Uuid
+  operationalPolicyDigest String
+  partitionKey            String
+  jobType                 String
+  schemaVersion           Int
+  originJobId             String    @db.Uuid
+  isRoot                  Boolean
+  state                   String
+  leaseExpiresAt          DateTime? @db.Timestamptz(6)
+  createdAt               DateTime  @default(dbgenerated("clock_timestamp()")) @db.Timestamptz(6)
+  releasedAt              DateTime? @db.Timestamptz(6)
+
+  @@index([operationalPolicyDigest, state, leaseExpiresAt], map: "JobCapacityReservation_global_idx")
+  @@index([operationalPolicyDigest, partitionKey, state], map: "JobCapacityReservation_partition_idx")
+  @@index([operationalPolicyDigest, jobType, schemaVersion, state], map: "JobCapacityReservation_topic_idx")
+  @@index([operationalPolicyDigest, originJobId, state], map: "JobCapacityReservation_origin_idx")
+}
+
+model JobGlobalRateBucket {
+  operationalPolicyDigest String
+  minuteBucket            DateTime @db.Timestamptz(6)
+  enqueueCount            Int      @default(0)
+  claimCount              Int      @default(0)
+
+  @@id([operationalPolicyDigest, minuteBucket])
+}
+
+model JobCircuitState {
+  operationalPolicyDigest String
+  jobType                 String
+  schemaVersion           Int
+  consecutiveFailures     Int       @default(0)
+  openUntil               DateTime? @db.Timestamptz(6)
+  updatedAt               DateTime  @default(dbgenerated("clock_timestamp()")) @db.Timestamptz(6)
+
+  @@id([operationalPolicyDigest, jobType, schemaVersion])
+}
+
+model JobOriginRateBucket {
+  originJobId         String   @db.Uuid
+  minuteBucket        DateTime @db.Timestamptz(6)
+  attemptCount        Int
+  heartbeatCount      Int
+  reconciliationCount Int
+  fenceLossCount      Int
+  factCount           Int
+  auditCount          Int
+
+  @@id([originJobId, minuteBucket])
+}
+
+model JobRuntimeContextKeyRevocation {
+  keyId      String               @id
+  revokedAt  DateTime             @default(dbgenerated("clock_timestamp()")) @db.Timestamptz(6)
+  reasonCode String
+  key        JobRuntimeContextKey @relation(fields: [keyId], references: [keyId], onDelete: Restrict, onUpdate: NoAction)
+}
+
+/// Phase C0 policy-neutral CRM identity boundary. This model intentionally has
+/// no profile, contact, lifecycle, ownership, metadata, or external-ID fields.
+/// Its database trigger owns all four values and the application has no table
+/// privileges or callable customer surface in C0.
+model CustomerMaster {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  version   BigInt   @default(1)
+  createdAt DateTime @default(dbgenerated("clock_timestamp()")) @db.Timestamptz(6)
+  updatedAt DateTime @default(dbgenerated("clock_timestamp()")) @db.Timestamptz(6)
+}
+
+/// Provider-independent order aggregate. No public checkout endpoint is exposed
+/// until the payment provider is configured and explicitly enabled.
+model Order {
+  fulfillmentStatus String @default("unallocated")
+  reservationExpiresAt DateTime?
+  operationsNextCheckAt DateTime?
+  refundedMinor BigInt @default(0)
+  customerId String?
+  customer CommerceCustomer? @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  reservations StockReservation[]
+  refunds RefundRequest[]
+  deliveryMethod String?
+  customerEncrypted String?
+  receiptPdfEncrypted String?
+  notificationStatus String @default("not_ready")
+  notificationAttempts Int @default(0)
+  notificationNextAt DateTime?
+  notificationLease String?
+  id             String      @id @default(cuid())
+  publicToken    String      @unique
+  idempotencyKey String      @unique
+  requestHash    String
+  status         OrderStatus @default(draft)
+  currency       String      @default("GEL")
+  subtotal       Int
+  total          Int
+  paidAt         DateTime?
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  items           OrderItem[]
+  paymentAttempts PaymentAttempt[]
+
+  @@index([status, createdAt])
+  @@index([notificationStatus, notificationNextAt], map: "Order_notification_retry")
+  @@index([operationsNextCheckAt])
+  @@index([reservationExpiresAt])
+  @@index([customerId, createdAt])
+}
+
+/// Immutable commercial snapshot. productId may become null if a catalog row is
+/// later deleted; the SKU/name/price snapshot remains part of the order record.
+model OrderItem {
+  issuedQty Int @default(0)
+  returnedQty Int @default(0)
+  reservation StockReservation?
+  id          String   @id @default(cuid())
+  order       Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  orderId     String
+  product     Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+  productId   String?
+  productCode String
+  productName String
+  quantity    Int
+  unitPrice   Int
+  lineTotal   Int
+  createdAt   DateTime @default(now())
+
+  @@index([orderId])
+  @@index([productId])
+}
+
+/// One provider initialization/retry. Provider-specific response bodies and
+/// secrets are deliberately not stored here.
+model PaymentAttempt {
+  redirectUrl String?
+  id                String               @id @default(cuid())
+  order             Order                @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  orderId           String
+  provider          String
+  /// hosted, google_pay_external or apple_pay_external. Wallet payloads are never stored.
+  method            String               @default("hosted")
+  idempotencyKey    String               @unique
+  /// Separate durable key for Apple Pay's completion request.
+  completionIdempotencyKey String?        @unique
+  providerReference String?
+  status            PaymentAttemptStatus @default(created)
+  failureCode       String?
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
+  completedAt       DateTime?
+
+  events PaymentEvent[]
+
+  @@unique([provider, providerReference])
+  @@index([orderId, createdAt])
+}
+
+/// Internal commerce profile; contact plaintext remains encrypted on the order.
+model CommerceCustomer {
+  id String @id @default(uuid())
+  identityKey String @unique
+  emailKey String
+  phoneKey String
+  createdAt DateTime @default(now())
+  orders Order[]
+  @@index([emailKey])
+  @@index([phoneKey])
+}
+
+model StockReservation {
+  id String @id @default(uuid())
+  orderId String
+  order Order @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  orderItemId String @unique
+  orderItem OrderItem @relation(fields: [orderItemId], references: [id], onDelete: Restrict)
+  productId String
+  product Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+  quantity Int
+  state String @default("active")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([orderId, state])
+}
+
+/// Append-only inventory journal; physical and reserved quantities are separate.
+model StockMovement {
+  id String @id @default(uuid())
+  productId String
+  product Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+  orderId String?
+  kind String
+  onHandDelta Int
+  reservedDelta Int
+  onHandAfter Int
+  reservedAfter Int
+  actorId String?
+  reason String?
+  createdAt DateTime @default(now())
+  @@index([productId, createdAt])
+  @@index([orderId, createdAt])
+}
+
+model OperationsCommand {
+  id String @id
+  fingerprint String
+  result Json
+  createdAt DateTime @default(now())
+}
+
+model RefundRequest {
+  id String @id
+  orderId String
+  order Order @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  amountMinor BigInt
+  reason String
+  actorId String
+  state String @default("queued")
+  providerReference String
+  providerActionId String? @unique
+  attempts Int @default(0)
+  nextAttemptAt DateTime @default(now())
+  leaseUntil DateTime?
+  leaseToken String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([state, nextAttemptAt])
+  @@index([orderId, createdAt])
+}
+
+/// Minimal callback audit/dedup record. Raw payment payloads are not persisted;
+/// only a digest is retained until the official provider contract is known.
+model PaymentEvent {
+  id               String         @id @default(cuid())
+  paymentAttempt   PaymentAttempt @relation(fields: [paymentAttemptId], references: [id], onDelete: Cascade)
+  paymentAttemptId String
+  deduplicationKey String         @unique
+  eventType        String
+  payloadHash      String
+  verified         Boolean        @default(false)
+  receivedAt       DateTime       @default(now())
+
+  @@index([paymentAttemptId, receivedAt])
+}
+
+/// Cache of the Wheel-Size API's /makes/ list. Vehicle makes essentially never
+/// change, so this (and the two models below) is a TTL-refreshed cache in front
+/// of the external API, not a source of truth we maintain by hand.
+model VehicleMake {
+  id             String         @id @default(cuid())
+  /// Wheel-Size's make slug, e.g. "bmw" — the external identifier we cache by.
+  slug           String         @unique
+  name           String
+  /// Null until /makes/{make}/models/ has been fetched at least once for this make.
+  modelsCachedAt DateTime?
+  cachedAt       DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  models         VehicleModel[]
+}
+
+/// Cache of the Wheel-Size API's /makes/{make}/models/ list, plus that model's
+/// available years (fetched lazily from /makes/{make}/models/{model}/years/).
+model VehicleModel {
+  id            String      @id @default(cuid())
+  make          VehicleMake @relation(fields: [makeId], references: [id], onDelete: Cascade)
+  makeId        String
+  /// Wheel-Size's model slug, unique within the make.
+  slug          String
+  name          String
+  /// Available model years, e.g. [2019, 2020, 2021]. Empty until fetched.
+  years         Int[]
+  /// Null until the years endpoint has been fetched at least once for this model.
+  yearsCachedAt DateTime?
+  cachedAt      DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@unique([makeId, slug])
+}
+
+/// Cache of one Wheel-Size /search/by_model/ call (make + model + year), which
+/// returns every trim/modification for that combination in one response — so
+/// caching is keyed at that granularity, not per trim.
+model VehicleFitment {
+  id        String   @id @default(cuid())
+  makeSlug  String
+  modelSlug String
+  year      Int
+  /// Normalized array of { trimName, rimDiametersInch, oemBySize, staggered,
+  /// minLoadIndex, oemSpeedRating } — see fitment/wheel-size-client.service.ts.
+  payload   Json
+  cachedAt  DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([makeSlug, modelSlug, year])
+}

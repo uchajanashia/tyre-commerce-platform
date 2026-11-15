@@ -1,0 +1,1 @@
+import{Wa as t}from"./chunk-7MGKI6EV.js";var i=class e{transform(r){return r?r.widthMm!=null&&r.aspect!=null?`${r.widthMm}/${r.aspect} R${r.rimDiameterInch}`:r.raw??`R${r.rimDiameterInch}`:""}static \u0275fac=function(n){return new(n||e)};static \u0275pipe=t({name:"tireSize",type:e,pure:!0})};export{i as a};

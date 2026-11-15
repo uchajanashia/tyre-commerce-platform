@@ -1,0 +1,1 @@
+import{a}from"./chunk-GT2LHCSX.js";import{h as o}from"./chunk-OVETZGG5.js";import{I as r,N as n}from"./chunk-7MGKI6EV.js";var i=class t{http=n(o);base=a.apiBaseUrl;quote(e){return this.http.post(`${this.base}/cart/quote`,{items:e})}static \u0275fac=function(u){return new(u||t)};static \u0275prov=r({token:t,factory:t.\u0275fac,providedIn:"root"})};export{i as a};

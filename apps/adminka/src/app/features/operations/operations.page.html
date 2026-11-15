@@ -1,0 +1,457 @@
+<section class="workspace">
+  <header class="page-heading">
+    <div>
+      <p class="eyebrow">სამუშაო სივრცე</p>
+      <h1>{{ info().title }}</h1>
+      <p class="description">{{ info().note }}</p>
+    </div>
+    <button
+      class="refresh"
+      aria-label="სიის განახლება"
+      type="button"
+      (click)="refresh()"
+      [disabled]="loading()"
+    >
+      <span aria-hidden="true">↻</span> განახლება
+    </button>
+  </header>
+
+  @if (view() !== 'overview') {
+    @if (quickStates().length) {
+      <div class="quick-filters" role="group" aria-label="სწრაფი ფილტრები">
+        @for (state of quickStates(); track state) {
+          <button
+            type="button"
+            [attr.aria-pressed]="request().status === state"
+            (click)="setStatus(state)"
+          >
+            {{ state === 'all' ? 'ყველა' : label(state) }}
+          </button>
+        }
+      </div>
+    }
+    <form class="toolbar" (ngSubmit)="applyFilters()">
+      <label class="search-field"
+        ><span aria-hidden="true">⌕</span
+        ><input
+          type="search"
+          name="search"
+          [(ngModel)]="search"
+          [placeholder]="info().search"
+          [attr.aria-label]="info().search"
+          maxlength="80"
+      /></label>
+      @if (info().states.length) {
+        <select
+          aria-label="სტატუსი"
+          name="status"
+          [(ngModel)]="status"
+          (ngModelChange)="applyFilters()"
+        >
+          <option value="all">ყველა სტატუსი</option>
+          @for (state of info().states; track state) {
+            <option [value]="state">{{ label(state) }}</option>
+          }
+        </select>
+      }
+      <button class="primary" type="submit">ძებნა</button>
+      @if (filtered()) {
+        <button class="clear-filter" type="button" (click)="clearFilters()">გასუფთავება</button>
+      }
+    </form>
+
+    <div class="list-meta" role="status">
+      {{
+        loading()
+          ? 'იტვირთება…'
+          : error()
+            ? 'ჩატვირთვა ვერ მოხერხდა'
+            : (result()?.total | number) + ' ჩანაწერი'
+      }}
+      @if (view() === 'inventory') {
+        <span>{{ config()?.warehouse || 'მთავარი საწყობი' }}</span>
+      }
+    </div>
+  }
+
+  @if (error()) {
+    <div class="feedback" role="alert">
+      <span class="empty-symbol">!</span>
+      <h2>მონაცემები ვერ ჩაიტვირთა</h2>
+      <p>შეამოწმეთ კავშირი და სცადეთ ხელახლა.</p>
+      <button class="primary" (click)="refresh()">თავიდან ცდა</button>
+    </div>
+  } @else if (loading()) {
+    <div class="skeleton" role="status" aria-label="მონაცემები იტვირთება">
+      <span></span><span></span><span></span><span></span>
+    </div>
+  } @else {
+    @if (view() === 'overview') {
+      @if (summary(); as data) {
+        <div class="metric-strip">
+          <div class="metric">
+            <span>გადახდილი შეკვეთების თანხა</span
+            ><strong
+              >{{ data.orders ? (data.orders.paidAmount | number: '1.0-0') : '—'
+              }}<small> ₾</small></strong
+            >
+            <p>მთელი პერიოდი</p>
+          </div>
+          <div class="metric">
+            <span>შეკვეთები</span
+            ><strong>{{ data.orders ? (data.orders.total | number) : '—' }}</strong>
+            <p>მთელი პერიოდი</p>
+          </div>
+          <div class="metric">
+            <span>გადახდის მოლოდინში</span><strong>{{ data.orders?.pending ?? '—' }}</strong>
+            <p>შესამოწმებელი შეკვეთები</p>
+          </div>
+          <div class="metric">
+            <span>პროდუქტები</span
+            ><strong>{{ data.catalog ? (data.catalog.products | number) : '—' }}</strong>
+            <p>კატალოგში</p>
+          </div>
+        </div>
+        <div class="overview-body">
+          <section class="activity">
+            <div class="section-title">
+              <h2>ბოლო შეკვეთები</h2>
+              @if (auth.hasPermission('orders.read')) {
+                <a [routerLink]="link('orders')">ყველა შეკვეთა <span aria-hidden="true">↗</span></a>
+              }
+            </div>
+            @if (!data.orders) {
+              <p class="quiet-empty">შეკვეთებზე წვდომა არ გაქვთ.</p>
+            } @else if (!result()?.items?.length) {
+              <div class="empty">
+                <span class="empty-symbol">↗</span>
+                <h3>ჯერ შეკვეთა არ არის</h3>
+                <p>ახალი შეკვეთები აქ გამოჩნდება.</p>
+              </div>
+            } @else {
+              <div class="recent-list">
+                @for (row of result()!.items.slice(0, 6); track row.id) {
+                  <button class="recent-row" (click)="open(row, $event)">
+                    <span class="row-monogram" aria-hidden="true">↗</span
+                    ><span class="row-main"
+                      ><strong>{{ row.title }}</strong
+                      ><small>{{
+                        row.updatedAt | date: 'dd.MM.yyyy · HH:mm' : '+0400'
+                      }}</small></span
+                    ><span class="status" [attr.data-status]="row.status">{{
+                      label(row.status)
+                    }}</span
+                    ><strong
+                      >{{ row.amount | number }}
+                      {{ !row.currency || row.currency === 'GEL' ? '₾' : row.currency }}</strong
+                    ><span class="row-arrow" aria-hidden="true">↗</span>
+                  </button>
+                }
+              </div>
+            }
+          </section>
+          <aside class="attention">
+            <span class="eyebrow">ყურადღება</span>
+            <h2>შემდეგი ნაბიჯები</h2>
+            @if (data.catalog) {
+              @if (auth.hasPermission('inventory.read')) {
+                <a [routerLink]="link('inventory')"
+                  ><span class="attention-number">{{ data.catalog.unknownStock }}</span
+                  ><span
+                    ><strong>დასაზუსტებელი ნაშთი</strong
+                    ><small>უცნობი რაოდენობის პროდუქტები</small></span
+                  ><span aria-hidden="true">↗</span></a
+                >
+              }
+              <a
+                [routerLink]="preview() ? link('inventory') : '/tires'"
+                [queryParams]="{ photos: 'without' }"
+                ><span class="attention-number">{{ data.catalog.withoutPhotos }}</span
+                ><span><strong>ფოტო დასამატებელია</strong><small>საბურავის მოდელები</small></span
+                ><span aria-hidden="true">↗</span></a
+              >
+              <a [routerLink]="link('vehicles')"
+                ><span class="attention-number vehicle-mark" aria-hidden="true">◉</span
+                ><span
+                  ><strong>მანქანის ვიზუალები</strong><small>პროდუქტის გვერდის მართვა</small></span
+                ><span aria-hidden="true">↗</span></a
+              >
+            } @else {
+              <p>კატალოგზე წვდომა არ გაქვთ.</p>
+            }
+            <p class="updated">განახლდა {{ data.updatedAt | date: 'HH:mm' : '+0400' }}</p>
+          </aside>
+        </div>
+      }
+    } @else {
+      @if (!result()?.items?.length) {
+        <div class="empty">
+          <span class="empty-symbol">⌕</span>
+          <h2>
+            {{
+              request().q || request().status !== 'all'
+                ? 'ჩანაწერი ვერ მოიძებნა'
+                : view() === 'orders'
+                  ? 'შეკვეთები ჯერ არ არის'
+                  : view() === 'customers'
+                    ? 'მომხმარებლები ჯერ არ არიან'
+                    : view() === 'payments'
+                      ? 'გადახდები ჯერ არ არის'
+                      : 'პროდუქტები ჯერ არ არის'
+            }}
+          </h2>
+          <p>
+            {{
+              request().q || request().status !== 'all'
+                ? 'შეცვალეთ საძიებო სიტყვა ან ფილტრი.'
+                : view() === 'customers'
+                  ? 'კონტაქტები შეკვეთებიდან დაემატება.'
+                  : 'ახალი ჩანაწერები აქ გამოჩნდება.'
+            }}
+          </p>
+          @if (filtered()) {
+            <button class="refresh" (click)="clearFilters()">ფილტრების გასუფთავება</button>
+          }
+        </div>
+      } @else {
+        <div class="table-wrap">
+          <table [attr.aria-label]="info().title">
+            <thead>
+              <tr>
+                <th>
+                  {{
+                    view() === 'customers'
+                      ? 'მომხმარებელი'
+                      : view() === 'inventory' || view() === 'vehicles'
+                        ? 'პროდუქტი'
+                        : 'შეკვეთა'
+                  }}
+                </th>
+                <th>
+                  {{
+                    view() === 'vehicles'
+                      ? 'მანქანა'
+                      : view() === 'customers'
+                        ? 'კონტაქტი'
+                        : 'სტატუსი'
+                  }}
+                </th>
+                @if (view() === 'inventory') {
+                  <th class="number">ნაშთი / ჯავშანი / თავისუფალი</th>
+                }
+                @if (view() !== 'customers' && view() !== 'vehicles') {
+                  <th class="number">{{ view() === 'inventory' ? 'ფასი' : 'თანხა' }}</th>
+                }
+                <th>განახლდა</th>
+                <th><span class="sr-only">დეტალი</span></th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (row of result()!.items; track row.id) {
+                <tr>
+                  <td class="identity-cell">
+                    <div class="product-cell">
+                      @if (view() === 'vehicles') {
+                        <span class="vehicle-thumb"
+                          ><img
+                            [src]="image(row.classification)"
+                            alt=""
+                            loading="lazy"
+                            (error)="imageFailed($event)"
+                            (load)="$any($event.target).style.opacity = 1"
+                        /></span>
+                      }
+                      <span
+                        ><button class="row-title" (click)="open(row, $event)">
+                          {{ row.title }}</button
+                        ><small>{{ row.subtitle }}</small></span
+                      >
+                    </div>
+                  </td>
+                  <td>
+                    @if (view() === 'vehicles') {
+                      <span>{{ vehicleName(row.classification) }}</span>
+                    } @else if (view() === 'customers') {
+                      <div class="contact-cell">
+                        <span>{{ detailValue(row, 'ტელეფონი') }}</span
+                        ><small>{{ detailValue(row, 'ელფოსტა') }}</small>
+                      </div>
+                    } @else {
+                      <span class="status" [attr.data-status]="row.status">{{
+                        label(row.status)
+                      }}</span>
+                      @if (row.fulfillmentStatus && config()?.enabled) {
+                        <small class="fulfillment-label">{{ label(row.fulfillmentStatus) }}</small>
+                      }
+                    }
+                  </td>
+                  @if (view() === 'inventory') {
+                    <td class="number stock-cell">
+                      <div class="stock-values">
+                        <span
+                          ><small>ნაშთი</small><b>{{ row.quantity ?? '—' }}</b></span
+                        ><span
+                          ><small>ჯავშანი</small><b>{{ detailValue(row, 'დაჯავშნილია') }}</b></span
+                        ><span
+                          ><small>თავისუფალი</small
+                          ><b>{{ detailValue(row, 'თავისუფალია') }}</b></span
+                        >
+                      </div>
+                    </td>
+                  }
+                  @if (view() !== 'customers' && view() !== 'vehicles') {
+                    <td
+                      class="number amount"
+                      [attr.data-label]="view() === 'inventory' ? 'საცალო' : 'თანხა'"
+                    >
+                      {{ row.amount | number }}
+                      {{ !row.currency || row.currency === 'GEL' ? '₾' : row.currency }}
+                    </td>
+                  }
+                  <td class="date" data-label="განახლდა">
+                    {{ row.updatedAt | date: 'dd.MM.yy' : '+0400' }}
+                  </td>
+                  <td class="action-cell">
+                    <button
+                      class="open-detail row-action"
+                      (click)="open(row, $event)"
+                      [attr.aria-label]="row.title + ' — დეტალი'"
+                    >
+                      {{ view() === 'customers' ? 'ისტორია' : 'დეტალი' }} ↗
+                    </button>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+        <footer class="pagination">
+          <span>{{ rangeStart() }}–{{ rangeEnd() }} / {{ result()?.total }}</span>
+          <div>
+            <button
+              (click)="movePage(-1)"
+              [disabled]="request().page === 1"
+              aria-label="წინა გვერდი"
+            >
+              ←</button
+            ><span>{{ request().page }}</span
+            ><button
+              (click)="movePage(1)"
+              [disabled]="rangeEnd() >= (result()?.total ?? 0)"
+              aria-label="შემდეგი გვერდი"
+            >
+              →
+            </button>
+          </div>
+        </footer>
+      }
+    }
+  }
+</section>
+
+<dialog #detailDialog class="detail" aria-labelledby="detail-title" (cancel)="cancelDetail($event)">
+  @if (selected(); as row) {
+    <header class="detail-topbar">
+      <span class="eyebrow">{{ info().title }}</span
+      ><button
+        class="open-detail"
+        (click)="close()"
+        [disabled]="detailBusy()"
+        aria-label="დეტალის დახურვა"
+      >
+        ×
+      </button>
+    </header>
+    <div class="detail-body">
+      <h2 id="detail-title">{{ row.title }}</h2>
+      <p class="description">{{ row.subtitle }}</p>
+      @if (view() === 'vehicles') {
+        <div class="vehicle-preview">
+          <img
+            [src]="image(classification)"
+            alt="მანქანის ვიზუალური მაგალითი"
+            (error)="imageFailed($event)"
+            (load)="$any($event.target).style.opacity = 1"
+          />
+        </div>
+        <p class="visual-note">ვიზუალური მაგალითი — თავსებადობას არ ცვლის.</p>
+        <label class="field"
+          >ავტომობილი<select
+            [(ngModel)]="classification"
+            [disabled]="saving() || !auth.hasPermission('catalog.write')"
+          >
+            @for (option of vehicleOptions; track option.id) {
+              <option [value]="option.id">{{ option.name }}</option>
+            }
+          </select></label
+        >
+        @if (auth.hasPermission('catalog.write')) {
+          <button
+            class="primary save"
+            [disabled]="saving() || classification === row.classification"
+            (click)="saveVehicle()"
+          >
+            {{ saving() ? 'ინახება…' : 'შენახვა' }}
+          </button>
+        }
+        @if (saveError()) {
+          <p role="alert" class="error-text">{{ saveError() }}</p>
+        }
+        <p role="status" class="success-text">{{ notice() }}</p>
+      } @else {
+        <span class="status" [attr.data-status]="row.status">{{ label(row.status) }}</span>
+      }
+      @if (row.amount !== null && (view() === 'orders' || view() === 'overview')) {
+        <p class="detail-total">
+          {{ row.amount | number }}
+          {{ row.currency === 'GEL' || !row.currency ? '₾' : row.currency }}
+        </p>
+      }
+      @if (view() === 'inventory') {
+        <div class="detail-stock stock-values">
+          <span
+            ><small>ნაშთი</small><b>{{ row.quantity ?? '—' }}</b></span
+          >
+          <span
+            ><small>ჯავშანი</small><b>{{ detailValue(row, 'დაჯავშნილია') }}</b></span
+          >
+          <span
+            ><small>თავისუფალი</small><b>{{ detailValue(row, 'თავისუფალია') }}</b></span
+          >
+        </div>
+        <p class="description">{{ detailValue(row, 'საიტზე') }}</p>
+      }
+      @if (
+        view() !== 'inventory' &&
+        !(config()?.enabled && (view() === 'orders' || view() === 'overview'))
+      ) {
+        <dl>
+          @for (item of row.details; track $index) {
+            <div>
+              <dt>{{ item.label }}</dt>
+              <dd>{{ item.value }}</dd>
+            </div>
+          }
+        </dl>
+      }
+      @if (config(); as workflowConfig) {
+        @if (
+          workflowConfig.enabled &&
+          ['orders', 'overview', 'customers', 'inventory'].includes(view())
+        ) {
+          <adm-workflow-detail
+            [row]="row"
+            [view]="view()"
+            [config]="workflowConfig"
+            (changed)="refresh()"
+          />
+        }
+      }
+      @if (row.modelId && auth.hasPermission('catalog.write')) {
+        <a class="edit-link" [routerLink]="['/tires', row.modelId]"
+          >ფასი და ფოტოები <span aria-hidden="true">↗</span></a
+        >
+      }
+    </div>
+  }
+</dialog>

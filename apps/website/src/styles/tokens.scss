@@ -1,0 +1,273 @@
+// =============================================================================
+// tyre.ge design tokens — single source of truth (spec 07 "Three Climates").
+// The identity is NOT a fixed palette: a neutral studio base + a global climate
+// state (the selected season) that retints accent, light, and atmosphere.
+// Spend boldness in ONE place (the climate); everything else stays quiet.
+// Components consume tokens only — no magic values.
+// =============================================================================
+
+:root {
+  // --- Brand foundation ------------------------------------------------------
+  // Sampled from the supplied tyre.ge mark, then adjusted where needed to keep
+  // text, controls and focus indicators at WCAG AA contrast.
+  --brand-navy-950: #061a36;
+  --brand-navy-900: #082b59;
+  --brand-navy-800: #0b3f82;
+  --brand-red-700: #a90107;
+  --brand-red-600: #c90209;
+  --brand-red-500: #e8020a;
+  --brand-graphite-900: #1d252e;
+  --brand-graphite-700: #3e4854;
+  --brand-off-white: #f6f7f9;
+  --brand-white: #ffffff;
+
+  // Stable semantic contract for every storefront feature.
+  --color-action-primary: var(--brand-red-500);
+  --color-action-primary-hover: var(--brand-red-600);
+  --color-action-primary-text: var(--brand-white);
+  --color-text: var(--brand-graphite-900);
+  --color-text-muted: #5b6673;
+  --color-border: #d6dce3;
+  --color-surface: var(--brand-white);
+  --color-surface-muted: var(--brand-off-white);
+  --color-focus: #1f63c5;
+  --color-focus-inverse: #ffffff;
+  --color-success: #1f7a4c;
+  --color-warning: #9a6300;
+  --color-error: #b4232d;
+
+  // --- Studio base ------------------------------------------------------------
+  // RAW dark palette — kept for the few spots that explicitly need a dark value
+  // regardless of theme (e.g. --accent-ink: dark text on a bright/colored CTA).
+  // Owner feedback (after "Light Seasonal Commerce" landed): no black/dark
+  // background anywhere on any page, full stop — so the SEMANTIC surface/text
+  // aliases below (--bg-*/--ink-*/--line/--glass-bg), which components actually
+  // consume, now point to the LIGHT tokens instead of these raw dark values.
+  // This one repoint is what makes header/footer/lightbox/anatomy/vehicle-scene
+  // and every not-yet-retouched page (garage/configurator/brand/etc.) light,
+  // without hand-editing each one.
+  --studio-0: #1a1c1f;
+  --studio-1: #24272b;
+  --studio-2: #2d3135;
+  // Raw light-on-dark values — no longer used as the semantic --ink-0/--ink-1
+  // (redefined below), kept only as a named reference in case a future
+  // genuinely-dark component needs them explicitly.
+  --studio-ink-0: #eceef1;
+  --studio-ink-1: #8a9099;
+  --metal: #b9c0c7; // cool machined chrome — the only neutral "accent" (material, not brand)
+
+  // Semantic surface/text/hairline aliases (components reference these) — LIGHT.
+  --bg-0: var(--canvas-neutral);
+  --bg-1: var(--surface);
+  --bg-2: var(--season-surface-soft);
+  --ink-0: var(--text-primary);
+  --ink-1: var(--text-secondary);
+  --line: var(--border);
+
+  // Floating glass chrome (spec 07): thin hairline + backdrop blur, no shadows.
+  --glass-bg: color-mix(in srgb, var(--surface) 70%, transparent);
+  --glass-blur: 14px;
+
+  // The "accent" is climate-driven. In the neutral base it is machined metal —
+  // never amber. Each climate theme retints it to the season's key light below.
+  --accent: var(--color-focus);
+  --accent-ink: var(--brand-white);
+
+  // --- Active climate tokens (defaults = neutral studio, no season) -----------
+  --clime-sky-top: #1a1d22;
+  --clime-sky-low: #23272e;
+  --clime-key: var(--metal);
+  --clime-ground: #0f1113;
+  --clime-glow: #b9c0c71f; // faint horizon glow of the key light
+  --clime-grade: transparent;
+
+  // --- Category identity colors (tire card badge/frame ONLY) ------------------
+  // 7 per-category colors, one per TYRE_CATEGORIES entry. These are LOCAL to the
+  // tire card frame + badge and the detail-hero frame; they NEVER feed the global
+  // 3-family climate theme (--clime-*/--accent stay 3-valued, set above/below).
+  --cat-summer: #e6a94d; // gold — ზაფხულის
+  --cat-all-season: #5fbf8a; // green — ყველა სეზონის
+  --cat-winter-at: #6bb6e8; // ice — ზამთრის (A/T)
+  --cat-ms: #8da2b5; // steel — ტალახი და თოვლი (M+S)
+  // NOTE: teal (--cat-ht) sits close to steel (--cat-ms); if they read as too
+  // similar in the UI, nudge H/T darker here.
+  --cat-ht: #4fb0a6; // teal — საგზაო (H/T)
+  --cat-at: #cbb187; // sand — უნივერსალური (A/T)
+  --cat-mt: #a0754e; // earth — უგზოობის (M/T)
+
+  // Functional colors (season-independent) — system states only, never decoration.
+  --success: var(--color-success);
+  --warning: var(--color-warning); // also the sizing-warning amber
+  --danger: var(--color-error);
+  --error: var(--color-error);
+  --focus: var(--color-focus);
+
+  // ===========================================================================
+  // Light Seasonal Commerce tokens (spec 06-seasonal-commerce-design.md).
+  // The dark studio tokens ABOVE remain the explicit inverse palette for the
+  // few deliberately dark cinematic moments (home hero, product-detail vehicle
+  // scene, PhotoLightbox, footer) — those components keep consuming
+  // --bg-*/--ink-*/--line/--metal directly and are UNCHANGED by this section.
+  // Everything else (catalog, product purchase/gallery, cart, season page,
+  // informational sections) consumes the tokens below instead.
+  // ===========================================================================
+
+  // --- Fixed commerce identity (season-STABLE — never retinted) ---------------
+  --text-primary: var(--color-text); // headings, price, primary body text
+  --text-secondary: var(--color-text-muted); // metadata and help text
+  --muted-text: var(--color-text-muted);
+  --surface: var(--color-surface); // card / panel
+  --surface-muted: var(--color-surface-muted);
+  --canvas-neutral: var(--brand-off-white);
+  --border: var(--color-border); // control/card hairlines on light surfaces
+  --graphite: var(--brand-graphite-900);
+  --navy: var(--brand-navy-900);
+  --brand-action: var(--color-action-primary);
+  --brand-action-hover: var(--color-action-primary-hover);
+  --brand-action-ink: var(--color-action-primary-text);
+
+  // --- Seasonal light palette (no-season / neutral defaults) ------------------
+  // Overridden per season by .climate-summer/.climate-winter/.climate-all-season
+  // below. --season-canvas is white in EVERY season (owner feedback: "white is
+  // white, not cream") — season identity now lives in --season-surface-soft/
+  // -band/-primary/-deep (chips, tinted summary panel, weather overlay, badges)
+  // rather than the main page background.
+  --season-canvas: var(--canvas-neutral);
+  --season-surface-soft: #e8edf2;
+  --season-band: var(--season-surface-soft);
+  --season-primary: #465a6e;
+  --season-deep: #2c3a48;
+
+  // --- Typography (FiraGO — editorial + technical, Georgian-first) ------------
+  --font-display: 'FiraGO', 'Noto Sans Georgian', system-ui, sans-serif;
+  --font-body: 'FiraGO', 'Noto Sans Georgian', system-ui, sans-serif;
+
+  // Type scale — ratio ~1.333, 16px base
+  --text-xs: 0.75rem; // 12
+  --text-sm: 0.875rem; // 14
+  --text-base: 1rem; // 16
+  --text-lg: 1.333rem; // 21.3
+  --text-xl: 1.777rem; // 28.4
+  --text-2xl: 2.369rem; // 37.9
+  --text-3xl: 3.157rem; // 50.5
+  --text-4xl: 4.209rem; // 67.3
+  --text-display: 5.61rem; // 89.8 — the giant season words
+
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-display: 600; // single display weight
+
+  --leading-body: 1.6;
+  --leading-tight: 1.05;
+  // Recurring technical micro-label motif (eyebrows, spec captions, controls).
+  --tracking-technical: 0.18em;
+
+  // --- Spacing scale (4px base) ----------------------------------------------
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+  --space-7: 3rem;
+  --space-8: 4rem;
+  --space-9: 6rem;
+  --space-10: 8rem;
+
+  // --- Radii (small, engineered — not bubbly) --------------------------------
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 10px;
+  --radius-full: 999px;
+
+  // --- Z-index map ------------------------------------------------------------
+  --z-stage: 10;
+  --z-stage-overlay: 20;
+  --z-header: 100;
+  --z-sheet: 200;
+  --z-overlay: 300;
+  --z-toast: 400;
+
+  // --- Motion (mirrored by MotionService) ------------------------------------
+  --dur-fast: 150ms;
+  --dur-base: 300ms;
+  --dur-slow: 600ms;
+  --dur-climate: 1400ms; // the climate transition (R3)
+  // 06-seasonal-commerce-design.md motion targets: primary token swaps
+  // (surface/text/border color-mix transitions) 500–650ms, the wider
+  // atmosphere/canvas transition 700–900ms. NOT yet wired into
+  // climate-backdrop.ts's --dur-climate (1400ms) — that duration is mirrored
+  // by a hardcoded JS constant (`dt / 1.4`) driving the scene-fade state
+  // machine, so shortening it needs a dedicated pass, not a token edit, and
+  // the spec itself gates that change on confirming perceived lag first.
+  --dur-token-transition: 600ms;
+  --dur-atmosphere: 800ms;
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1); // ~ power3.out
+  --ease-seat: cubic-bezier(0.34, 1.4, 0.64, 1); // ~ back.out(1.4)
+  --ease-climate: cubic-bezier(0.45, 0, 0.2, 1); // ~ power2.inOut
+
+  // --- Layout -----------------------------------------------------------------
+  --container-max: 1440px;
+  --header-height: 64px;
+  --mobile-header-height: 68px;
+  --sidebar-width: 196px;
+  --touch-target: 44px;
+}
+
+// =============================================================================
+// Climate theme layers — set by ClimateService on the app root. Descendants
+// inherit the retinted custom properties (accent → the season's key light,
+// plus sky/ground/glow for atmospheric hints). R2: calm theme + frames only;
+// R3 adds the cinematic stage transformation.
+// =============================================================================
+
+.climate-summer {
+  --clime-sky-top: #5b3b29;
+  --clime-sky-low: #c49a70;
+  --clime-key: #b78152; // warm studio key, not a literal sun
+  --clime-ground: #211915;
+  --clime-glow: #b7815224;
+  --accent: var(--brand-action);
+  --accent-ink: var(--brand-action-ink);
+
+  // Canvas stays white (owner feedback) — season identity now carried by the
+  // soft surface/band/primary/deep tones below instead of a tinted canvas.
+  --season-surface-soft: #f8f1ea;
+  --season-band: #efe2d5;
+  --season-primary: #8a5835;
+  --season-deep: #55351f;
+}
+
+.climate-winter {
+  --clime-sky-top: #344452;
+  --clime-sky-low: #b8c6d0;
+  --clime-key: #a9bfce; // clean cold studio key
+  --clime-ground: #303940;
+  --clime-glow: #a9bfce24;
+  --accent: var(--brand-action);
+  --accent-ink: var(--brand-action-ink);
+
+  // Canvas stays white (owner feedback) — season identity now carried by the
+  // soft surface/band/primary/deep tones below instead of a tinted canvas.
+  --season-surface-soft: #f0f4f6;
+  --season-band: #e2e9ed;
+  --season-primary: #526d80;
+  --season-deep: #324956;
+}
+
+.climate-all-season {
+  --clime-sky-top: #3f4d49;
+  --clime-sky-low: #8fa099;
+  --clime-key: #80968d; // neutral overcast studio key
+  --clime-ground: #242b29;
+  --clime-glow: #80968d24;
+  --accent: var(--brand-action);
+  --accent-ink: var(--brand-action-ink);
+
+  // Canvas stays white (owner feedback) — season identity now carried by the
+  // soft surface/band/primary/deep tones below instead of a tinted canvas.
+  --season-surface-soft: #eff3f1;
+  --season-band: #e1e8e4;
+  --season-primary: #526b61;
+  --season-deep: #33483f;
+}

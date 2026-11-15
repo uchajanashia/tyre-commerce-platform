@@ -1,0 +1,108 @@
+<button
+  #trigger
+  type="button"
+  class="filter-trigger"
+  [class.is-active]="!!value()"
+  [attr.aria-label]="label() + ': ' + selectedLabel()"
+  aria-haspopup="dialog"
+  [attr.aria-expanded]="open()"
+  (click)="toggleMenu()"
+  (keydown)="onTriggerKeydown($event)"
+>
+  <span class="filter-trigger__caption">{{ label() }}</span>
+  <span class="filter-trigger__row">
+    <span class="filter-trigger__value" [class.is-chip]="!!value()">{{ selectedLabel() }}</span>
+    <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m5 7.5 5 5 5-5" /></svg>
+  </span>
+</button>
+
+@if (open()) {
+  <button
+    type="button"
+    class="filter-backdrop"
+    tabindex="-1"
+    [attr.aria-label]="copy('დახურვა', 'Close')"
+    (click)="close()"
+  ></button>
+
+  <section
+    #dialog
+    class="filter-dialog"
+    role="dialog"
+    aria-modal="true"
+    [attr.aria-label]="label()"
+    (keydown)="onDialogKeydown($event)"
+  >
+    <header class="filter-dialog__header">
+      <div>
+        <span>{{ copy('ზომის არჩევა', 'Choose a size') }}</span>
+        <h3>{{ label() }}</h3>
+      </div>
+      <button
+        type="button"
+        class="filter-dialog__close"
+        (click)="close()"
+        [attr.aria-label]="copy('დახურვა', 'Close')"
+      >
+        <span aria-hidden="true">×</span>
+      </button>
+    </header>
+
+    @if (searchEnabled()) {
+      <label class="filter-search">
+        <span class="visually-hidden">{{ label() }} — {{ copy('ძებნა', 'search') }}</span>
+        <svg viewBox="0 0 20 20" aria-hidden="true">
+          <circle cx="8.5" cy="8.5" r="5" />
+          <path d="m12.2 12.2 4 4" />
+        </svg>
+        <input
+          #searchInput
+          type="search"
+          autocomplete="off"
+          [placeholder]="copy('მოძებნე მნიშვნელობა', 'Search values')"
+          [value]="query()"
+          (input)="onSearch($event)"
+        />
+      </label>
+    }
+
+    <div
+      #listbox
+      class="filter-grid"
+      role="listbox"
+      tabindex="0"
+      [attr.aria-label]="label()"
+      [attr.aria-activedescendant]="activeOptionId()"
+      (keydown)="onListKeydown($event)"
+    >
+      @for (option of filteredOptions(); track option.value; let i = $index) {
+        <button
+          type="button"
+          role="option"
+          tabindex="-1"
+          [attr.id]="optionId(i)"
+          [class.is-cursor]="i === cursor()"
+          [class.is-selected]="option.value === value()"
+          [attr.aria-selected]="option.value === value()"
+          (click)="choose(option)"
+        >
+          {{ option.label }}
+          @if (option.value === value()) {
+            <span aria-hidden="true">✓</span>
+          }
+        </button>
+      } @empty {
+        <p class="filter-grid__empty">{{ copy('მნიშვნელობა ვერ მოიძებნა', 'No values found') }}</p>
+      }
+    </div>
+
+    <p class="filter-dialog__hint">
+      {{
+        copy(
+          'ისრებით აირჩიე, Enter-ით დაადასტურე, Esc-ით დახურე.',
+          'Use arrow keys to choose, Enter to confirm and Esc to close.'
+        )
+      }}
+    </p>
+  </section>
+}

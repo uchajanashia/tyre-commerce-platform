@@ -1,0 +1,32 @@
+<footer class="footer">
+  <div class="footer__intro">
+    <a class="footer__brand" routerLink="/" aria-label="tyre.ge — მთავარი გვერდი">tyre.ge</a>
+    <p>{{ t('footer.tagline') }}</p>
+  </div>
+
+  <nav class="footer__nav" aria-label="ფუტერის ნავიგაცია" i18n-aria-label>
+    <div>
+      <p>{{ t('footer.choose') }}</p>
+      <a routerLink="/garage">{{ t('footer.byVehicle') }}</a>
+      <a routerLink="/catalog">{{ t('footer.bySize') }}</a>
+    </div>
+    <div>
+      <p>{{ t('footer.information') }}</p>
+      <a routerLink="/about">{{ t('nav.about') }}</a>
+      <a routerLink="/delivery-returns">{{ t('footer.deliveryReturns') }}</a>
+      <a routerLink="/terms">{{ t('footer.terms') }}</a>
+      <a routerLink="/privacy">{{ t('footer.privacy') }}</a>
+    </div>
+    <div>
+      <p>{{ t('footer.contact') }}</p>
+      <a href="tel:+995500110111">500 110 111</a>
+      <a href="mailto:infotyrege@gmail.com">infotyrege&#64;gmail.com</a>
+      <a routerLink="/about">{{ t('footer.address') }}</a>
+    </div>
+  </nav>
+
+  <div class="footer__bottom">
+    <p>{{ t('footer.fitmentNote') }}</p>
+    <p class="num">შპს „ჯი ელ ბიზნეს ჯგუფი“ · 431439311 · © 2026 tyre.ge</p>
+  </div>
+</footer>

@@ -1,0 +1,455 @@
+body:has(adm-operations-page dialog[open]) {
+  overflow: hidden;
+}
+adm-operations-page {
+  .detail {
+    margin: auto;
+    width: min(700px, calc(100% - 24px));
+    height: auto;
+    max-height: 90svh;
+    max-width: 100%;
+    border: 0;
+    border-left: 1px solid #e4eaf0;
+    padding: 0;
+    border-radius: 12px;
+    overflow: hidden;
+    color: #17334d;
+    background: #fff;
+    outline: none;
+  }
+  .detail[open] {
+    display: flex;
+    flex-direction: column;
+  }
+  .detail::backdrop {
+    background: #0a203b66;
+    backdrop-filter: blur(2px);
+  }
+  .detail-topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 24px;
+    border-bottom: 1px solid var(--adm-line);
+    flex: none;
+  }
+  .detail-topbar .eyebrow {
+    margin: 0;
+  }
+  .detail-body {
+    padding: 24px;
+    overflow-y: auto;
+    min-height: 0;
+  }
+  .detail h2 {
+    font-size: 22px;
+    line-height: 1.6;
+    margin-bottom: 12px;
+  }
+  .detail-body > .description {
+    margin-bottom: 20px;
+  }
+  .detail dl {
+    margin-top: 20px;
+  }
+  .detail dl > div {
+    padding: 12px 0;
+    border-bottom: 1px solid #e7edf2;
+  }
+  .detail dt {
+    font-size: 11px;
+    color: #52677c;
+    margin-bottom: 5px;
+  }
+  .detail dd {
+    font-size: 13px;
+    margin: 0;
+    line-height: 1.8;
+    overflow-wrap: anywhere;
+  }
+  .edit-link {
+    display: flex;
+    justify-content: space-between;
+    color: #215ee9;
+    font-size: 13px;
+    text-decoration: none;
+    margin-top: 30px;
+    padding: 15px 0;
+  }
+  .vehicle-preview {
+    height: 230px;
+    background: #f1f5f9;
+    border-radius: 12px;
+    display: grid;
+    place-items: center;
+    margin: 25px 0 12px;
+  }
+  .vehicle-preview img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+  }
+  .visual-note {
+    font-size: 11px;
+    color: #52677c;
+    line-height: 1.7;
+  }
+  .field {
+    display: grid;
+    gap: 10px;
+    font-size: 12px;
+    margin: 26px 0 18px;
+  }
+  .save {
+    width: 100%;
+    padding: 13px;
+  }
+  .error-text {
+    color: #a83b42;
+    font-size: 12px;
+    line-height: 1.7;
+  }
+  .success-text {
+    color: #28745b;
+    font-size: 12px;
+  }
+  @keyframes slide {
+    from {
+      opacity: 0.5;
+      transform: translateX(30px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+}
+
+adm-workflow-detail {
+  .workflow {
+    margin-top: 24px;
+  }
+  .workflow-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin: 28px 0 16px;
+  }
+  h3 {
+    font-size: 14px;
+    margin: 0;
+  }
+  small,
+  time {
+    color: #52677c;
+    font-size: 11px;
+    line-height: 1.6;
+  }
+  .workflow-item {
+    padding: 18px 0;
+    border-bottom: 1px solid #e7edf2;
+  }
+  .workflow-item > strong {
+    display: block;
+    font-size: 13px;
+    line-height: 1.7;
+  }
+  .workflow-counts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px;
+    margin-top: 12px;
+    font-size: 11px;
+    color: #52677c;
+  }
+  .workflow-counts b {
+    color: #17334d;
+    margin-left: 5px;
+  }
+  .workflow-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 9px;
+    margin: 22px 0;
+  }
+  button {
+    border: 1px solid #d6e0e9;
+    background: white;
+    color: #17334d;
+    border-radius: 8px;
+    padding: 11px 14px;
+    cursor: pointer;
+    font: inherit;
+    font-size: 12px;
+  }
+  button.primary {
+    background: #215ee9;
+    border-color: #215ee9;
+    color: white;
+  }
+  button:disabled {
+    opacity: 0.5;
+    cursor: default;
+  }
+  input,
+  textarea {
+    width: 100%;
+    min-width: 0;
+    padding: 11px;
+    border: 1px solid #ccd8e3;
+    border-radius: 7px;
+    background: white;
+    color: #17334d;
+    font: inherit;
+    box-sizing: border-box;
+  }
+  textarea {
+    min-height: 70px;
+    resize: vertical;
+  }
+  input:focus,
+  textarea:focus,
+  button:focus-visible {
+    outline: 2px solid #215ee9;
+    outline-offset: 2px;
+  }
+  .workflow-form {
+    margin: 24px 0;
+    padding: 20px;
+    background: #f3f6fa;
+    border-radius: 10px;
+  }
+  .workflow-quantity {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 75px;
+    align-items: center;
+    gap: 15px;
+    font-size: 12px;
+    margin-top: 18px;
+  }
+  .workflow-event {
+    display: flex;
+    justify-content: space-between;
+    gap: 15px;
+    padding: 16px 0;
+    border-bottom: 1px solid #e7edf2;
+  }
+  .workflow-event strong,
+  .workflow-history strong {
+    display: block;
+    font-size: 12px;
+  }
+  .workflow-event small,
+  .workflow-history small {
+    display: block;
+    margin-top: 7px;
+    overflow-wrap: anywhere;
+  }
+  .workflow-event time {
+    white-space: nowrap;
+  }
+  .workflow-history {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    text-align: left;
+    border: 0;
+    border-bottom: 1px solid #e7edf2;
+    border-radius: 0;
+    padding: 18px 0;
+  }
+  .workflow-history b {
+    white-space: nowrap;
+    font-size: 12px;
+  }
+  .workflow-back {
+    border: 0;
+    padding: 6px 0;
+    color: #215ee9;
+    background: transparent;
+  }
+  .workflow-paging {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin: 20px 0;
+    font-size: 12px;
+  }
+}
+
+adm-operations-page .detail dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 20px;
+}
+adm-workflow-detail .workflow-form {
+  padding: 18px;
+  border: 1px solid var(--adm-line);
+  border-radius: 6px;
+  background: var(--adm-surface-subtle);
+}
+adm-workflow-detail .workflow-event > div,
+adm-workflow-detail .workflow-history > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+adm-workflow-detail .workflow-back {
+  min-height: 40px;
+}
+@media (max-width: 650px) {
+  adm-operations-page .detail-body {
+    padding: 18px;
+  }
+  adm-operations-page .detail-topbar {
+    padding: 14px 18px;
+  }
+  adm-operations-page .detail dl {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  adm-workflow-detail .workflow-actions > button {
+    flex: 1;
+  }
+  adm-workflow-detail .workflow-event {
+    flex-wrap: wrap;
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  adm-operations-page .detail[open] {
+    animation: detail-appear 150ms ease-out;
+  }
+  @keyframes detail-appear {
+    from {
+      opacity: 0.5;
+      transform: translateY(6px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+}
+
+/* Overview context shared with the operations workspace. */
+adm-operations-page {
+  .metric-strip {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    border-block: 1px solid var(--adm-line);
+    padding: 26px 0;
+    margin-bottom: 36px;
+  }
+  .metric {
+    padding: 0 24px;
+    border-left: 1px solid var(--adm-line);
+  }
+  .metric:first-child {
+    padding-left: 0;
+    border: 0;
+  }
+  .metric > span {
+    font-size: 12px;
+    color: var(--adm-ink-soft);
+  }
+  .metric strong {
+    display: block;
+    font-size: 32px;
+    font-weight: 550;
+    margin: 12px 0;
+    font-variant-numeric: tabular-nums;
+  }
+  .metric strong small {
+    font-size: 20px;
+  }
+  .metric p {
+    font-size: 11px;
+    color: var(--adm-ink-soft);
+    margin: 0;
+  }
+  .overview-body {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 300px;
+    gap: 36px;
+  }
+  .section-title {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+  .section-title a {
+    font-size: 11px;
+  }
+  .recent-row {
+    display: flex;
+    gap: 14px;
+    align-items: center;
+    width: 100%;
+    padding: 18px 0;
+    text-align: left;
+    border: 0;
+    border-top: 1px solid var(--adm-line);
+    background: transparent;
+    color: inherit;
+  }
+  .row-main {
+    flex: 1;
+    min-width: 0;
+  }
+  .row-main strong {
+    font-size: 12px;
+    display: block;
+  }
+  .row-main small {
+    font-size: 11px;
+    color: var(--adm-ink-soft);
+    display: block;
+    margin-top: 6px;
+  }
+  .recent-row > strong {
+    font-size: 13px;
+    white-space: nowrap;
+  }
+  .row-monogram,
+  .row-arrow {
+    color: var(--adm-ink-soft);
+  }
+  .attention {
+    padding: 22px;
+    background: var(--adm-surface-subtle);
+    align-self: start;
+  }
+  .attention > a {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    color: inherit;
+    padding: 20px 0;
+    border-bottom: 1px solid var(--adm-line);
+  }
+  .attention > a > span:nth-child(2) {
+    flex: 1;
+  }
+  .attention strong {
+    display: block;
+    font-size: 12px;
+  }
+  .attention small {
+    display: block;
+    font-size: 11px;
+    color: var(--adm-ink-soft);
+    margin-top: 6px;
+    line-height: 1.6;
+  }
+  .attention-number {
+    font-size: 22px;
+  }
+  .updated {
+    font-size: 11px;
+    color: var(--adm-ink-soft);
+    margin: 20px 0 0;
+  }
+}

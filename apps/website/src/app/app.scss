@@ -1,0 +1,94 @@
+:host {
+  --home-header-height: 80px;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.skip-link {
+  position: fixed;
+  inset-block-start: var(--space-2);
+  inset-inline-start: var(--space-2);
+  z-index: var(--z-toast);
+  min-block-size: var(--touch-target);
+  padding: var(--space-3) var(--space-4);
+  border: 2px solid var(--focus);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text-primary);
+  font-weight: var(--weight-medium);
+  transform: translateY(calc(-100% - var(--space-4)));
+}
+
+.skip-link:focus-visible {
+  transform: translateY(0);
+}
+
+// Content sits above the fixed climate backdrop (z 0); pages keep transparent
+// voids so the weather shows through around their surfaces.
+.app-main,
+app-footer {
+  position: relative;
+  z-index: 1;
+}
+
+.app-main {
+  flex: 1;
+}
+
+@media (min-width: 1024px) {
+  .app-main,
+  app-footer {
+    margin-left: var(--sidebar-width);
+  }
+}
+
+@media (max-width: 1023px) {
+  :host {
+    --home-header-height: 68px;
+  }
+
+  .app-main {
+    padding-top: var(--mobile-header-height);
+  }
+}
+
+.app-main--home {
+  margin-left: 0;
+  padding-top: 0;
+  background: #f6f7f9;
+}
+
+app-footer.home-footer {
+  margin-left: 0;
+}
+
+// The local design preview supplies its own full-width navigation and footer.
+.app-main--test-home {
+  margin-left: 0;
+  padding-top: 0;
+  background: #030304;
+}
+
+// A9 (spec 07): fade-through-dark stays a tiny CSS opacity transition so the
+// eager shell does not have to download the route-level GSAP runtime.
+.route-overlay {
+  position: fixed;
+  inset: 0;
+  background: var(--bg-0);
+  opacity: 0;
+  pointer-events: none;
+  z-index: var(--z-overlay);
+  transition: opacity 100ms linear 50ms;
+}
+
+.route-overlay.is-active {
+  opacity: 1;
+  transition-delay: 0ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .route-overlay {
+    transition: none;
+  }
+}
